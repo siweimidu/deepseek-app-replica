@@ -5,7 +5,7 @@ import { usePredictiveBack } from '../../app/backGesture.js'
 import { useTranslate } from '../../i18n/index.js'
 import { loadSession, useChatStore } from '../../services/chat/store.js'
 import type { SessionSummary } from '../../services/chat/types.js'
-import { MODEL_WINDOWS } from '../../services/chat/context/budget.js'
+import { MODEL_LABELS, MODEL_WINDOWS } from '../../services/chat/context/budget.js'
 import { formatDateTime } from '../../utils/format.js'
 import { copyText } from '../../utils/clipboard.js'
 import { showToast } from '../base/toastState.js'
@@ -147,7 +147,7 @@ export const SessionDetailSheet = ({
             <Row
               icon={<IconInfoOutline20 />}
               label={t('sessionDetailModel')}
-              value={activeModel}
+              value={MODEL_LABELS[activeModel] ?? activeModel}
             />
           ) : null}
           {cache ? (

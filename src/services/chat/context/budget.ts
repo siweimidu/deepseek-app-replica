@@ -11,10 +11,18 @@ import { buildReplyView } from '../view.js'
  * 中间几十轮都不再动 —— 裁剪点之间前缀完全一致。
  */
 
-/** 各模型的窗口大小（token）。数值可在设置里被覆盖。 */
+/** 各模型的窗口大小（token） */
 export const MODEL_WINDOWS: Record<ChatModel, number> = {
-  'deepseek-flash': 128_000,
+  // V4.1 Flash-1017：100 万上下文
+  'deepseek-flash': 1_000_000,
+  // V4.1 Pro 的窗口尚未核对，先保守按 128K
   'deepseek-v4-pro': 128_000,
+}
+
+/** 界面上展示用的模型名 */
+export const MODEL_LABELS: Record<ChatModel, string> = {
+  'deepseek-flash': 'DeepSeek V4.1Flash-1017',
+  'deepseek-v4-pro': 'DeepSeek V4.1Pro-1017',
 }
 
 /** 给输出留的余量 */
