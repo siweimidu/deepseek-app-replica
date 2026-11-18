@@ -44,12 +44,45 @@ const CallSettingsSheet = ({ onClose }: { onClose: () => void }) => {
     { id: 'tide' as const, label: t('settingsTtsVoiceTide'), description: t('callVoiceDeep') },
   ]
   const active = tones.findIndex((tone) => tone.id === ttsVoice)
+  const [dragX, setDragX] = useState(0)
+  const startX = useRef<number | null>(null)
+
+  const switchTo = (step: number) => {
+    const next = (Math.max(0, active) + step + tones.length) % tones.length
+    setTtsVoice(tones[next].id)
+  }
 
   return (
     <div className={styles.sheetBackdrop} onClick={onClose} role="presentation">
       <section className={styles.sheet} onClick={(event) => event.stopPropagation()}>
         <h2>{t('callVoiceTitle')}</h2>
-        <div className={styles.voicePreview} aria-hidden="true" />
+        <div
+          className={styles.voicePreview}
+          role="presentation"
+          style={{ transform: `translateX(${dragX * 0.4}px)` }}
+          onPointerDown={(event) => {
+            startX.current = event.clientX
+            event.currentTarget.setPointerCapture(event.pointerId)
+          }}
+          onPointerMove={(event) => {
+            if (startX.current === null) {
+              return
+            }
+            setDragX(event.clientX - startX.current)
+          }}
+          onPointerUp={(event) => {
+            const moved = startX.current === null ? 0 : event.clientX - startX.current
+            startX.current = null
+            setDragX(0)
+            if (Math.abs(moved) > 36) {
+              switchTo(moved < 0 ? 1 : -1)
+            }
+          }}
+          onPointerCancel={() => {
+            startX.current = null
+            setDragX(0)
+          }}
+        />
         <div className={styles.voiceName}>{tones[active]?.label}</div>
         <div className={styles.voiceDesc}>{tones[active]?.description}</div>
         <div className={styles.dots} role="radiogroup" aria-label={t('callVoiceTitle')}>
