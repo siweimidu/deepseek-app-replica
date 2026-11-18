@@ -1,198 +1,215 @@
 import { useEffect, useRef } from 'react'
-import { flushSync } from 'react-dom'
 import { android } from '../../app/android.js'
 import { closeMobileSider, openMobileSider, useMobileSider } from './mobileSiderState.js'
 
 /**
- * 侧边栏横滑（整块重写）
+ * 侧边栏横滑（最终版，极简）
  *
- * 规则只有两条：
- *   对话页  —— 只能「向左横滑」拉出侧边栏
- *   侧边栏  —— 只能「向右横滑」回到对话
+ * 规则：
+ *   对话页 —— 向「左」横滑拉出侧边栏
+ *   侧边栏 —— 向「右」横滑回到对话
  *
- * 反方向、竖直方向、输入框上的滑动一律不管，交给页面自己处理。
- *
- * 实现要点：
- * 1. 只监听 touch 事件（WebView 里 pointer 会被合成器取消），绑在 document 上，
- *    不依赖任何元素何时挂载。
- * 2. 拖拽期间写 --drawer-progress 跟手；松手时先同步提交开合状态、再撤内联值，
- *    过渡自然收尾，既不会闪也不会停在半途。
- * 3. 订阅 store：打开 ⇒ 进度恒为 1，关闭 ⇒ 不留内联进度。机制上杜绝"停在半路"。
+ * 设计取舍（都是踩过的坑）：
+ * 1. touch 和 pointer 两套事件都听，谁先到算谁；一套被合成器取消时另一套还能用。
+ * 2. 状态切换**不碰任何 DOM**：直接调 store。会不会动只取决于状态，不取决于拿没拿到元素。
+ *    （之前 settle() 里先判元素存在再切状态，元素取不到就整个失效，表现就是"怎么滑都没反应"。）
+ * 3. 跟手只是锦上添花：拿不到 frame 就跳过跟手，松手依然会切换。
+ * 4. 横向/纵向判定用 1.2 倍比，纵向滑动完全放行。
  */
 
 const SLOP = 8
 const RATIO = 1.2
-const OPEN_PX = 28
-const CLOSE_PX = 28
-const OPEN_RATIO = 0.18
-const CLOSE_RATIO = 0.82
+const TRIGGER_PX = 26
 
 type Phase = 'idle' | 'pending' | 'opening' | 'closing'
 
-type Gesture = {
+type Track = {
   phase: Phase
-  startX: number
-  startY: number
+  x: number
+  y: number
+  lastDx: number
   width: number
-  progress: number
+  opened: boolean
+  consumed: boolean
 }
 
 export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
-  const gesture = useRef<Gesture | null>(null)
+  const track = useRef<Track | null>(null)
 
   useEffect(() => {
     if (!android) {
       return
     }
 
-    const frame = () => frameRef.current
-    const drawerWidth = () => {
-      const node = frame()?.querySelector<HTMLElement>('[data-android-drawer]')
-      return node?.offsetWidth || window.innerWidth
-    }
+    const node = () =>
+      frameRef.current ??
+      document.querySelector<HTMLElement>('[data-android-drawer]')?.parentElement ??
+      null
 
-    /** 用内联进度跟手 */
     const paint = (progress: number) => {
-      const node = frame()
-      if (!node) {
+      const element = node()
+      if (!element) {
         return
       }
-      node.setAttribute('data-drawer-dragging', '')
-      node.style.setProperty('--drawer-progress', String(Math.max(0, Math.min(1, progress))))
+      element.setAttribute('data-drawer-dragging', '')
+      element.style.setProperty('--drawer-progress', String(Math.max(0, Math.min(1, progress))))
     }
 
-    /** 收尾：先提交状态，再撤内联值，让过渡从当前位置动画到终点 */
-    const settle = (open: boolean) => {
-      const node = frame()
-      if (!node) {
-        return
-      }
-      node.removeAttribute('data-drawer-dragging')
-      flushSync(() => {
-        if (open) {
-          openMobileSider()
-        } else {
-          closeMobileSider()
-        }
-      })
-      node.style.removeProperty('--drawer-progress')
+    const clear = () => {
+      const element = node()
+      element?.removeAttribute('data-drawer-dragging')
+      element?.style.removeProperty('--drawer-progress')
     }
 
-    const onStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1) {
-        gesture.current = null
-        return
+    /** 只改状态，不碰 DOM —— 这是"能不能切换"的唯一决定因素 */
+    const apply = (open: boolean) => {
+      clear()
+      if (open) {
+        openMobileSider()
+      } else {
+        closeMobileSider()
       }
-      const touch = event.touches[0]
-      if (
-        event.target instanceof Element &&
-        event.target.closest('input, textarea, [data-drawer-gesture-ignore]')
-      ) {
-        gesture.current = null
-        return
-      }
-      gesture.current = {
+    }
+
+    const start = (x: number, y: number) => {
+      const element = node()
+      const drawer = element?.querySelector<HTMLElement>('[data-android-drawer]')
+      track.current = {
         phase: 'pending',
-        startX: touch.clientX,
-        startY: touch.clientY,
-        width: drawerWidth(),
-        progress: useMobileSider.getState().open ? 1 : 0,
+        x,
+        y,
+        lastDx: 0,
+        width: drawer?.offsetWidth || window.innerWidth,
+        opened: useMobileSider.getState().open,
+        consumed: false,
       }
     }
 
-    const onMove = (event: TouchEvent) => {
-      const state = gesture.current
-      const touch = event.touches[0]
-      if (!state || !touch || event.touches.length !== 1) {
+    const move = (x: number, y: number) => {
+      const state = track.current
+      if (!state || state.consumed) {
         return
       }
-      const dx = touch.clientX - state.startX
-      const dy = touch.clientY - state.startY
-      const opened = useMobileSider.getState().open
+      const dx = x - state.x
+      const dy = y - state.y
+      state.lastDx = dx
 
       if (state.phase === 'pending') {
         if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) {
           return
         }
-        // 横向必须明显大于纵向，否则交还给滚动
         if (Math.abs(dx) <= Math.abs(dy) * RATIO) {
-          gesture.current = null
+          track.current = null
           return
         }
-        // 方向是硬规则：关闭时只认向左，打开时只认向右
-        if (!opened && dx < 0) {
+        // 硬规则方向：关闭时只认向左，打开时只认向右
+        if (!state.opened && dx < 0) {
           state.phase = 'opening'
-        } else if (opened && dx > 0) {
+        } else if (state.opened && dx > 0) {
           state.phase = 'closing'
         } else {
-          gesture.current = null
+          track.current = null
           return
         }
       }
 
-      if (state.phase === 'opening') {
-        state.progress = -dx / state.width
-      } else if (state.phase === 'closing') {
-        state.progress = 1 - dx / state.width
-      } else {
-        return
-      }
-      paint(state.progress)
-    }
+      const progress =
+        state.phase === 'opening' ? -dx / state.width : 1 - dx / state.width
+      paint(progress)
 
-    const onEnd = () => {
-      const state = gesture.current
-      gesture.current = null
-      if (!state) {
-        return
-      }
-      if (state.phase === 'opening') {
-        const travelled = state.progress * state.width
-        settle(travelled >= OPEN_PX || state.progress > OPEN_RATIO)
-      } else if (state.phase === 'closing') {
-        const travelled = (1 - state.progress) * state.width
-        settle(!(travelled >= CLOSE_PX || state.progress < CLOSE_RATIO))
+      // 越过阈值立刻切换：不等抬手，用户拖过一点就能看到结果
+      if (Math.abs(dx) >= TRIGGER_PX && !state.consumed) {
+        state.consumed = true
+        track.current = null
+        apply(state.phase === 'opening')
       }
     }
 
-    const onCancel = () => {
-      const state = gesture.current
-      gesture.current = null
-      if (!state || state.phase === 'pending') {
+    const finish = () => {
+      const state = track.current
+      track.current = null
+      if (!state || state.consumed || state.phase === 'pending') {
         return
       }
-      // 取消时回到拖动前的状态
-      settle(useMobileSider.getState().open)
+      // 没到阈值：回到拖动前的状态
+      apply(state.opened)
     }
 
-    document.addEventListener('touchstart', onStart, { passive: true })
-    document.addEventListener('touchmove', onMove, { passive: true })
-    document.addEventListener('touchend', onEnd, { passive: true })
-    document.addEventListener('touchcancel', onCancel, { passive: true })
+    const touchStart = (event: TouchEvent) => {
+      const touch = event.touches[0]
+      if (!touch || event.touches.length !== 1) {
+        return
+      }
+      if (
+        event.target instanceof Element &&
+        event.target.closest('input, textarea, [data-drawer-gesture-ignore]')
+      ) {
+        return
+      }
+      start(touch.clientX, touch.clientY)
+    }
+    const touchMove = (event: TouchEvent) => {
+      const touch = event.touches[0]
+      if (touch) {
+        move(touch.clientX, touch.clientY)
+      }
+    }
+
+    const pointerStart = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse') {
+        return
+      }
+      if (
+        event.target instanceof Element &&
+        event.target.closest('input, textarea, [data-drawer-gesture-ignore]')
+      ) {
+        return
+      }
+      start(event.clientX, event.clientY)
+    }
+    const pointerMove = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') {
+        move(event.clientX, event.clientY)
+      }
+    }
+
+    document.addEventListener('touchstart', touchStart, { passive: true })
+    document.addEventListener('touchmove', touchMove, { passive: true })
+    document.addEventListener('touchend', finish, { passive: true })
+    document.addEventListener('touchcancel', finish, { passive: true })
+    document.addEventListener('pointerdown', pointerStart, { passive: true })
+    document.addEventListener('pointermove', pointerMove, { passive: true })
+    document.addEventListener('pointerup', finish, { passive: true })
+    document.addEventListener('pointercancel', finish, { passive: true })
 
     return () => {
-      document.removeEventListener('touchstart', onStart)
-      document.removeEventListener('touchmove', onMove)
-      document.removeEventListener('touchend', onEnd)
-      document.removeEventListener('touchcancel', onCancel)
-      const node = frame()
-      node?.removeAttribute('data-drawer-dragging')
-      node?.style.removeProperty('--drawer-progress')
+      document.removeEventListener('touchstart', touchStart)
+      document.removeEventListener('touchmove', touchMove)
+      document.removeEventListener('touchend', finish)
+      document.removeEventListener('touchcancel', finish)
+      document.removeEventListener('pointerdown', pointerStart)
+      document.removeEventListener('pointermove', pointerMove)
+      document.removeEventListener('pointerup', finish)
+      document.removeEventListener('pointercancel', finish)
+      clear()
     }
   }, [frameRef])
 
-  // 不变量：打开 ⇒ 进度 1；关闭 ⇒ 无内联进度（拖拽中不干预）
+  // 不变量：打开 ⇒ 进度恒为 1；关闭 ⇒ 不残留内联进度（拖拽中不干预）
   useEffect(
     () =>
       useMobileSider.subscribe((state) => {
-        const node = frameRef.current
-        if (!node || node.hasAttribute('data-drawer-dragging')) {
+        const element =
+          frameRef.current ??
+          document.querySelector<HTMLElement>('[data-android-drawer]')?.parentElement ??
+          null
+        if (!element || element.hasAttribute('data-drawer-dragging')) {
           return
         }
         if (state.open) {
-          node.style.setProperty('--drawer-progress', '1')
+          element.style.setProperty('--drawer-progress', '1')
         } else {
-          node.style.removeProperty('--drawer-progress')
+          element.style.removeProperty('--drawer-progress')
         }
       }),
     [frameRef],
