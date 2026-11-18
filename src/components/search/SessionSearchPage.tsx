@@ -5,6 +5,7 @@ import { useTranslate } from '../../i18n/index.js'
 import { loadSession } from '../../services/chat/db.js'
 import { buildReplyView } from '../../services/chat/view.js'
 import { selectSession, useChatStore } from '../../services/chat/store.js'
+import { requestScrollToMessage } from '../../services/chat/scrollTarget.js'
 import styles from './SessionSearchPage.module.css'
 
 type SearchState = {
@@ -21,6 +22,8 @@ type Hit = {
   id: string
   /** 真正要跳转的会话 id */
   sessionId: string
+  /** 命中的消息 id（用于滚动定位） */
+  messageId: string
   title: string
   snippet: string
   updatedAt: number
@@ -81,7 +84,7 @@ export const SessionSearchPage = () => {
   const [searching, setSearching] = useState(false)
   const pageRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const textCache = useRef(new Map<string, string>())
+  const textCache = useRef(new Map<string, { id: string; text: string }[]>())
 
   useEffect(() => {
     if (!open) {
@@ -124,33 +127,36 @@ export const SessionSearchPage = () => {
         for (const [row, summary] of batch.entries()) {
           const session = loaded[row]
           const cached = textCache.current.get(summary.id)
-          const texts =
-            cached !== undefined
-              ? cached.split('\u0000')
-              : (session?.messages.map((message) => messageText(message)) ?? [])
-          if (cached === undefined) {
-            textCache.current.set(summary.id, texts.join('\u0000'))
+          const rows =
+            cached ??
+            (session?.messages ?? []).map((message) => ({
+              id: message.id,
+              text: messageText(message),
+            }))
+          if (!cached && session) {
+            textCache.current.set(summary.id, rows)
           }
           const titleHit = summary.title.toLocaleLowerCase().includes(term)
-          for (const [index, text] of texts.entries()) {
-            const at = text.toLocaleLowerCase().indexOf(term)
+          for (const [index, row] of rows.entries()) {
+            const at = row.text.toLocaleLowerCase().indexOf(term)
             if (at < 0) {
               continue
             }
-            const snippet = `${at > 14 ? '…' : ''}${text.slice(Math.max(0, at - 14), at + SNIPPET_LIMIT)}`
+            const snippet = `${at > 14 ? '…' : ''}${row.text.slice(Math.max(0, at - 14), at + SNIPPET_LIMIT)}`
             found.push({
               id: `${summary.id}-${index}`,
               sessionId: summary.id,
+              messageId: row.id,
               title: summary.title,
               snippet: snippet.replace(/\s+/g, ' ').trim(),
               updatedAt: summary.updatedAt,
             })
           }
-          // 只有标题命中、正文没命中时也给一行，方便找到
-          if (!texts.some((text) => text.toLocaleLowerCase().includes(term)) && titleHit) {
+          if (!rows.some((row) => row.text.toLocaleLowerCase().includes(term)) && titleHit) {
             found.push({
               id: `${summary.id}-title`,
               sessionId: summary.id,
+              messageId: '',
               title: summary.title,
               snippet: summary.title,
               updatedAt: summary.updatedAt,
@@ -176,6 +182,9 @@ export const SessionSearchPage = () => {
   const pick = (hit: Hit) => {
     // 用真实会话 id 跳转；id 是列表 key（会话 id + 消息序号），不能直接当会话 id
     void selectSession(hit.sessionId)
+    if (hit.messageId) {
+      requestScrollToMessage(hit.sessionId, hit.messageId)
+    }
     closeSessionSearch()
   }
 

@@ -6,6 +6,7 @@ import {
   type MessageVersions,
 } from '../../services/chat/branches.js'
 import { selectMessageVersion } from '../../services/chat/store.js'
+import { clearScrollTarget, useScrollTarget } from '../../services/chat/scrollTarget.js'
 import type { Session } from '../../services/chat/types.js'
 import { closeSearchPanel } from '../search/searchPanelState.js'
 import { AssistantMessage } from './AssistantMessage.js'
@@ -101,6 +102,27 @@ export const MessageList = ({
       }
       restoreScrollRef.current = null
       return
+    }
+    // 搜索点击后：精确滚到命中的那条消息并高亮一下
+    const target = useScrollTarget.getState().target
+    if (target && target.sessionId === session.id && scroll) {
+      const node = scroll.querySelector<HTMLElement>(
+        `[data-message-id="${CSS.escape(target.messageId)}"]`
+      )
+      if (node) {
+        clearScrollTarget()
+        stickyRef.current = false
+        // scrollIntoView 在嵌套滚动容器里会去滚祖先，这里自己算偏移
+        const box = scroll.getBoundingClientRect()
+        const rect = node.getBoundingClientRect()
+        const centered = scroll.scrollTop + (rect.top - box.top) - box.height / 2 + rect.height / 2
+        const top = Math.max(0, Math.min(scroll.scrollHeight - scroll.clientHeight, centered))
+        scroll.scrollTo({ top, behavior: 'smooth' })
+        scrollTopRef.current = top
+        node.classList.add(styles.flash)
+        window.setTimeout(() => node.classList.remove(styles.flash), 1400)
+        return
+      }
     }
     stickyRef.current = true
     scrollToBottom()
