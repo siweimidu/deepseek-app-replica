@@ -121,6 +121,15 @@ export type SessionAnchor = {
   createdAt: number
 }
 
+/** 事实账本的一块：覆盖一段轮次，写入后永不重写（保证前缀缓存） */
+export type MemoryBlock = {
+  index: number
+  fromRound: number
+  toRound: number
+  text: string
+  createdAt: number
+}
+
 export type Session = {
   id: string
   title: string
@@ -134,6 +143,8 @@ export type Session = {
   contextUsage?: ContextUsage
   /** 开头存档，编译一次后冻结，保证长对话仍记得最初内容 */
   anchor?: SessionAnchor
+  /** 事实账本：只追加，覆盖中段对话，裁剪也不会丢 */
+  memory?: MemoryBlock[]
 }
 
 /** 会话列表元数据；消息只在打开会话时加载。 */

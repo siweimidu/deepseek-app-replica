@@ -7,6 +7,7 @@ import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from 
 import { useSettings } from '../settings.js'
 import { planContext } from './context/budget.js'
 import { ensureAnchor, withAnchor } from './context/anchor.js'
+import { ensureMemoryBlock, withMemory } from './context/memory.js'
 import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
 import * as db from './db.js'
 import {
@@ -1133,7 +1134,10 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           useSettings.getState().apiKey ?? '',
           {
             model: initial.model ?? MODEL,
-            system: withAnchor(SYSTEM_PROMPT, getSession(sessionId)?.anchor?.text),
+            system: withMemory(
+              withAnchor(SYSTEM_PROMPT, getSession(sessionId)?.anchor?.text),
+              getSession(sessionId)?.memory
+            ),
             messages,
             thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
             safety_check: SAFETY_CHECK,
@@ -1272,5 +1276,12 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
     persist(sessionId)
     // 有些流不发 stop_reason，收尾时再兜底一次
     ensureLocalTitle(sessionId)
+    // 每满 20 轮补一块事实账本（只追加，旧块绝不重写）
+    void ensureMemoryBlock(sessionId, getSession, initial.model ?? MODEL).then((next) => {
+      if (next) {
+        updateSession(sessionId, () => next)
+        persist(sessionId)
+      }
+    })
   }
 }
