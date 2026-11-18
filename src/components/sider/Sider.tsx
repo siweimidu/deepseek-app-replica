@@ -226,7 +226,6 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         {androidDrawer && !selecting ? (
           <IconButton
             className={styles.selectChats}
-            size="m"
             icon={
               <svg
                 width="18"
@@ -236,17 +235,13 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
                 stroke="currentColor"
                 aria-hidden="true"
               >
-                <circle cx="4" cy="5.2" r="2.1" strokeWidth="1.5" />
-                <circle cx="4" cy="12.8" r="2.1" strokeWidth="1.5" />
-                <path d="M8.6 5.2h6M8.6 12.8h6" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="4" cy="5" r="1.6" />
+                <circle cx="4" cy="13" r="1.6" />
+                <path d="M8 5h7M8 13h7" strokeWidth="1.2" />
               </svg>
             }
             aria-label={t('androidSelectChats')}
-            tooltip={t('androidSelectChats')}
-            onClick={() => {
-              setSelecting(true)
-              setChecked(new Set(activeId ? [activeId] : []))
-            }}
+            onClick={() => setSelecting(true)}
           />
         ) : null}
         <div className={styles.list}>

@@ -55,10 +55,6 @@ public final class MainActivity extends Activity {
     private static final int CAMERA = 4;
     private static final int EXPORT_HISTORY = 5;
     private WebView webView;
-    private float swipeDownY;
-    private boolean swipeTracking;
-    private static final float SWIPE_DP = 24f;
-    private static final float SWIPE_RATIO = 1.2f;
     private FrameLayout frame;
     private ApiKeyStore keys;
     private ValueCallback<Uri[]> fileCallback;
@@ -74,6 +70,11 @@ public final class MainActivity extends Activity {
     /** 导出包下载缓存：令牌 -> 文件，导入结束后由前端调用释放。 */
     private final Map<String, File> downloads = new ConcurrentHashMap<>();
     private final ExecutorService downloadExecutor = Executors.newSingleThreadExecutor();
+
+    private void handleBack() {
+        webView.evaluateJavascript("window.dispatchEvent(new Event('android-back', {cancelable: true}))",
+            result -> { if ("true".equals(result)) finish(); });
+    }
 
     /** 把预测性返回手势的进度实时交给页面，让当前界面跟着手指位移。 */
     private void emitBackGesture(String state, float progress) {
