@@ -13,7 +13,7 @@ import {
   IconTrashOutline16,
   NewChatIcon,
 } from '../base/icons.js'
-import { IconCollapseSidebar16, IconPinOutline20 } from '../base/appIcons.js'
+import { IconPinOutline20 } from '../base/appIcons.js'
 import { setPinnedSessions, setSiderCollapsed, useSettings } from '../../services/settings.js'
 import { groupSessions } from '../../services/chat/sessionGroups.js'
 import { newChat, removeSession, useChatStore } from '../../services/chat/store.js'
@@ -184,27 +184,17 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
           </div>
         </div>
       ) : androidDrawer ? (
-        <div className={styles.searchRow}>
-          <label className={styles.search} onClick={() => openSessionSearch()}>
-            <IconSearchOutline16 />
-            <input
-              type="search"
-              placeholder={t('androidSearchChats')}
-              aria-label={t('androidSearchChats')}
-              value=""
-              readOnly
-              onFocus={() => openSessionSearch()}
-            />
-          </label>
-          <button
-            type="button"
-            className={styles.collapse}
-            aria-label={t('collapseSiderbarButton')}
-            onClick={closeMobileSider}
-          >
-            <IconCollapseSidebar16 />
-          </button>
-        </div>
+        <label className={styles.search} onClick={() => openSessionSearch()}>
+          <IconSearchOutline16 />
+          <input
+            type="search"
+            placeholder={t('androidSearchChats')}
+            aria-label={t('androidSearchChats')}
+            value=""
+            readOnly
+            onFocus={() => openSessionSearch()}
+          />
+        </label>
       ) : (
         <>
           <div className={styles.top}>
@@ -233,6 +223,32 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         </>
       )}
       <div className={styles.listWrap}>
+        {androidDrawer && !selecting ? (
+          <IconButton
+            className={styles.selectChats}
+            size="m"
+            icon={
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                fill="none"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <circle cx="4" cy="5.2" r="2.1" strokeWidth="1.5" />
+                <circle cx="4" cy="12.8" r="2.1" strokeWidth="1.5" />
+                <path d="M8.6 5.2h6M8.6 12.8h6" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            }
+            aria-label={t('androidSelectChats')}
+            tooltip={t('androidSelectChats')}
+            onClick={() => {
+              setSelecting(true)
+              setChecked(new Set(activeId ? [activeId] : []))
+            }}
+          />
+        ) : null}
         <div className={styles.list}>
           {groups.map((group) => (
             <div key={group.key} className={styles.section} data-session-group={group.key}>

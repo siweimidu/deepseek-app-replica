@@ -11,7 +11,6 @@ import {
   useChatStore,
 } from '../services/chat/store.js'
 import { ImportStatusBar } from '../components/base/ImportStatusBar.js'
-import { SwipeDebugBadge } from '../components/sider/SwipeDebugBadge.js'
 import { VoiceCallScreen } from '../components/call/VoiceCallScreen.js'
 import { SearchPanel } from '../components/search/SearchPanel.js'
 import { SessionSearchPage } from '../components/search/SessionSearchPage.js'
@@ -31,7 +30,7 @@ import { stopReadAloud } from '../services/speech/readAloud.js'
 import { CollapsedSider } from '../components/sider/CollapsedSider.js'
 import { closeMobileSider, useMobileSider } from '../components/sider/mobileSiderState.js'
 import { MobileSider, Sider } from '../components/sider/Sider.js'
-import { useDrawerSwipe } from '../components/sider/useDrawerSwipe.js'
+import { useAndroidDrawerGesture } from '../components/sider/useAndroidDrawerGesture.js'
 import styles from './App.module.css'
 
 export const App = () => {
@@ -56,7 +55,7 @@ export const App = () => {
     state.activeId === null ? false : state.sessionLoadErrors[state.activeId] === true
   )
   const frameRef = useMobileViewport(isMobile)
-  useDrawerSwipe(frameRef)
+  const drawerGesture = useAndroidDrawerGesture()
   const streaming = useChatStore((state) =>
     state.activeId === null ? false : Object.hasOwn(state.streaming, state.activeId)
   )
@@ -127,6 +126,7 @@ export const App = () => {
         ref={frameRef}
         className={styles.frame}
         data-drawer-open={drawerOpen}
+        {...(android && isMobile ? drawerGesture : {})}
       >
         {isMobile ? <MobileSider /> : siderCollapsed ? null : <Sider />}
         <main className={styles.main}>
@@ -187,7 +187,6 @@ export const App = () => {
       {android ? <AndroidSettings /> : <SettingsDialog />}
       <SessionSearchPage />
       <VoiceCallScreen />
-      <SwipeDebugBadge />
       <ImportStatusBar />
       <Toast />
     </>

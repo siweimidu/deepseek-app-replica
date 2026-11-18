@@ -1,9 +1,7 @@
-import { useRef } from 'react'
 import { IconMenuOutline20, IconNewChatOutline20 } from '../base/icons.js'
 import { IconPhoneOutline20 } from '../base/appIcons.js'
 import { openVoiceCall } from '../call/callState.js'
 import { useTranslate } from '../../i18n/index.js'
-import { toggleSwipeDebug } from '../sider/useDrawerSwipe.js'
 import { android } from '../../app/android.js'
 import { newChat } from '../../services/chat/store.js'
 import { setAutoRead, useSettings } from '../../services/settings.js'
@@ -17,7 +15,6 @@ import styles from './MobileHeader.module.css'
 /** 移动端顶栏：左侧菜单打开侧边栏；会话页再显示标题与开启新对话 */
 export const MobileHeader = ({ title }: { title?: string }) => {
   const t = useTranslate()
-  const taps = useRef(0)
   const autoRead = useSettings((state) => state.autoRead)
   return (
     <div className={styles.header}>
@@ -31,19 +28,7 @@ export const MobileHeader = ({ title }: { title?: string }) => {
       />
       {title === undefined && !android ? null : (
         <>
-          <div
-        className={styles.title}
-        onClick={() => {
-          taps.current += 1
-          window.setTimeout(() => {
-            taps.current = 0
-          }, 900)
-          if (taps.current >= 5) {
-            taps.current = 0
-            toggleSwipeDebug()
-          }
-        }}
-      >{title}</div>
+          <div className={styles.title}>{title}</div>
           {android ? (
             <IconButton
               size="xl"
