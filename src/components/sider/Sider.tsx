@@ -73,7 +73,11 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
       }
       const box = scroller.getBoundingClientRect()
       const rect = row.getBoundingClientRect()
-      const delta = rect.top - box.top + scroller.scrollTop
+      // 分组标题是 sticky 的，会把行的上沿盖住；滚动时让出这一段高度
+      const section = row.closest('[data-session-group]')
+      const header = section?.querySelector<HTMLElement>('[data-session-header]')
+      const headerHeight = header ? Math.ceil(header.getBoundingClientRect().height) : 0
+      const delta = rect.top - box.top + scroller.scrollTop - headerHeight
       scroller.scrollTop = Math.max(0, Math.round(delta))
     })
     return () => cancelAnimationFrame(frame)
@@ -221,8 +225,10 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
       <div className={styles.listWrap}>
         <div className={styles.list}>
           {groups.map((group) => (
-            <div key={group.key} className={styles.section}>
-              <div className={styles.sectionHeader}>{group.label}</div>
+            <div key={group.key} className={styles.section} data-session-group={group.key}>
+              <div className={styles.sectionHeader} data-session-header>
+                {group.label}
+              </div>
               {group.sessions.map((session) => (
                 <SessionItem
                   key={session.id}
