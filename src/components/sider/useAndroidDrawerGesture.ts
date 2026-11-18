@@ -7,6 +7,8 @@ const touchSlop = 8
 const velocityWindow = 60
 const maxFlingPause = 56
 const minFlingVelocity = 0.33
+/** 横移超过这个距离就按方向切换，轻滑也能生效（不必拖过 50% 宽度） */
+const toggleDistance = 56
 
 type Sample = { x: number; time: number }
 
@@ -135,7 +137,16 @@ export const useAndroidDrawerGesture = () => {
     const frame = event.currentTarget
     const velocity = releaseVelocity(drag.samples, event.timeStamp)
     const flick = Math.abs(velocity) >= minFlingVelocity
-    const open = cancelled ? drag.startedOpen : flick ? velocity > 0 : drag.current >= 0.5
+    // 相对起点移动了多少（正=往右=打开，负=往左=关闭）
+    const travelled = drag.current - drag.start
+    const farEnough = Math.abs(travelled) * drag.edge >= toggleDistance
+    const open = cancelled
+      ? drag.startedOpen
+      : flick
+        ? velocity > 0
+        : farEnough
+          ? travelled > 0
+          : drag.current >= 0.5
     frame.dataset.drawerOpen = String(open)
     delete frame.dataset.drawerDragging
     // Let the transition start at the last rendered drag position.
