@@ -44,20 +44,34 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const [detail, setDetail] = useState<SessionSummary | null>(null)
   const [pinning, setPinning] = useState<{ ids: Set<string>; unpin: boolean } | null>(null)
   const unpin = checked.size > 0 && [...checked].every((id) => pinnedIds.includes(id))
+  // 当前会话放到最前：切换回来时它总在最上面
+  const orderedSessions = useMemo(() => {
+    if (!activeId) {
+      return sessions
+    }
+    const index = sessions.findIndex((session) => session.id === activeId)
+    if (index <= 0) {
+      return sessions
+    }
+    const copy = [...sessions]
+    const [current] = copy.splice(index, 1)
+    return [current, ...copy]
+  }, [sessions, activeId])
+
   const groups = useMemo(() => {
     if (!androidDrawer || pinnedIds.length === 0) {
-      return groupSessions(sessions, now, t)
+      return groupSessions(orderedSessions, now, t)
     }
-    const pinned = sessions.filter((session) => pinnedIds.includes(session.id))
+    const pinned = orderedSessions.filter((session) => pinnedIds.includes(session.id))
     const rest = groupSessions(
-      sessions.filter((session) => !pinnedIds.includes(session.id)),
+      orderedSessions.filter((session) => !pinnedIds.includes(session.id)),
       now,
       t
     )
     return pinned.length
       ? [{ key: 'pinned', label: t('androidPinned'), sessions: pinned }, ...rest]
       : rest
-  }, [androidDrawer, sessions, now, pinnedIds, t])
+  }, [androidDrawer, orderedSessions, now, pinnedIds, t])
   const [deleting, setDeleting] = useState<SessionSummary[]>([])
   const [deletePending, setDeletePending] = useState(false)
   const drawerOpen = useMobileSider((state) => state.open)
