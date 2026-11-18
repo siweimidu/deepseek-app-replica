@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { android, saveAndroidHistory } from '../../app/android.js'
+import { usePredictiveBack } from '../../app/backGesture.js'
 import { useTranslate } from '../../i18n/index.js'
 import type { TtsVoice } from '../../services/api/speech.js'
 import { clearHistory, exportHistory } from '../../services/chat/backup.js'
@@ -305,6 +306,10 @@ const Settings = ({ start }: { start: Page }) => {
     return () => window.removeEventListener('android-back', onBack)
   })
 
+  // 预测性返回：手势期间整页跟随位移，松手完成后再真正回退
+  const pageRef = useRef<HTMLElement>(null)
+  usePredictiveBack(pageRef, back)
+
   const runExportAction = async (action: () => Promise<void>) => {
     setBusy(true)
     try {
@@ -347,7 +352,12 @@ const Settings = ({ start }: { start: Page }) => {
   }
 
   return (
-    <section className={styles.page} role="region" aria-label={labels[page]}>
+    <section
+      ref={pageRef}
+      className={styles.page}
+      role="region"
+      aria-label={labels[page]}
+    >
       <header className={styles.header}>
         <button
           type="button"
@@ -455,7 +465,6 @@ const Settings = ({ start }: { start: Page }) => {
               />
               <Row
                 label="DeepSeek API Key"
-                icon={<Profile />}
                 value="••••••••"
                 onClick={() => editor.setEditing(true)}
               />

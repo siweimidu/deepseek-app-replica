@@ -28,6 +28,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.window.BackEvent;
+import android.window.OnBackAnimationCallback;
 import android.window.OnBackInvokedDispatcher;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -114,10 +116,7 @@ public final class MainActivity extends Activity {
         webView.setWebViewClient(new AppPage());
         webView.setWebChromeClient(new DeviceFeatures());
         webView.addJavascriptInterface(new DeviceBridge(), "DeepSeekAndroid");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
-                OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::handleBack);
-        }
+        registerBackCallback();
         webView.loadUrl(HOME);
     }
 
@@ -131,6 +130,57 @@ public final class MainActivity extends Activity {
     private void handleBack() {
         webView.evaluateJavascript("window.dispatchEvent(new Event('android-back', {cancelable: true}))",
             result -> { if ("true".equals(result)) finish(); });
+    }
+
+    /** 把预测性返回手势的进度实时交给页面，让当前界面跟着手指位移。 */
+    private void emitBackGesture(String state, float progress) {
+        webView.evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('android-back-gesture',{detail:{state:'" + state
+                + "',progress:" + progress + "}}))", null);
+    }
+
+    /**
+     * Android 14 起用 OnBackAnimationCallback 接收手势进度（started / progressed /
+     * cancelled / invoked），13 及以下退回普通回调，回到同一套 JS 处理。
+     */
+    private void registerBackCallback() {
+        if (Build.VERSION.SDK_INT >= 34) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT, new OnBackAnimationCallback() {
+                    @Override
+                    public void onBackStarted(BackEvent event) {
+                        emitBackGesture("start", 0f);
+                    }
+
+                    @Override
+                    public void onBackProgressed(BackEvent event) {
+                        emitBackGesture("progress", event.getProgress());
+                    }
+
+                    @Override
+                    public void onBackCancelled() {
+                        emitBackGesture("cancel", 0f);
+                    }
+
+                    @Override
+                    public void onBackInvoked() {
+                        // 页面里的预测性返回层若已接管，就不再重复派发返回事件
+                        emitBackGesture("invoked", 1f);
+                        webView.evaluateJavascript("window.__dshConsumedBack === true",
+                            consumed -> {
+                                if ("true".equals(consumed)) {
+                                    return;
+                                }
+                                handleBack();
+                            });
+                    }
+                });
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::handleBack);
+        }
     }
 
     private void setBars(boolean dark) {

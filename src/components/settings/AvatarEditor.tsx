@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePredictiveBack } from '../../app/backGesture.js'
 import { useTranslate } from '../../i18n/index.js'
 import { showToast } from '../base/toastState.js'
 import styles from './AvatarEditor.module.css'
@@ -28,6 +29,8 @@ export const AvatarEditor = ({
   const [scale, setScale] = useState(1)
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 })
   const pointers = useRef(new Map<number, Point>())
+  const stage = useRef<HTMLDivElement>(null)
+  usePredictiveBack(stage, onCancel)
   const gesture = useRef<{ distance: number; scale: number } | null>(null)
 
   useEffect(() => {
@@ -98,6 +101,7 @@ export const AvatarEditor = ({
         </button>
       </div>
       <div
+        ref={stage}
         className={styles.stage}
         onPointerDown={(event) => {
           event.currentTarget.setPointerCapture(event.pointerId)

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
+import { usePredictiveBack } from '../../app/backGesture.js'
 import { useTranslate } from '../../i18n/index.js'
 import { loadSession, useChatStore } from '../../services/chat/store.js'
 import type { SessionSummary } from '../../services/chat/types.js'
@@ -56,6 +57,9 @@ export const SessionDetailSheet = ({
   const imported = session.id.startsWith('session-')
   // 挂载后下一帧再切换，保证 transition 从收起状态开始播。
   const [shown, setShown] = useState(false)
+  const sheet = useRef<HTMLElement>(null)
+  // 预测性返回：手势期间弹层跟着手指往下退
+  usePredictiveBack(sheet, onClose)
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setShown(true))
@@ -69,6 +73,7 @@ export const SessionDetailSheet = ({
   return createPortal(
     <div className={clsx(styles.overlay, shown && styles.overlayShown)} onClick={onClose} role="presentation">
       <section
+        ref={sheet}
         className={clsx(styles.sheet, shown && styles.sheetShown)}
         role="dialog"
         aria-modal="true"

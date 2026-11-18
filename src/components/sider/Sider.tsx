@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { android } from '../../app/android.js'
+import { usePredictiveBack } from '../../app/backGesture.js'
 import { useTranslate } from '../../i18n/index.js'
 import {
   IconCloseOutline16,
@@ -352,6 +353,8 @@ export const MobileSider = () => {
       drawer.current.inert = !open
     }
   }, [open])
+  // 预测性返回：手势期间抽屉跟着手指往左退
+  usePredictiveBack(drawer, closeMobileSider, android && open)
   if (!android && !open) {
     return null
   }

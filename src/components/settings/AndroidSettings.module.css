@@ -100,7 +100,7 @@
   box-sizing: border-box;
   gap: 12px;
   width: 100%;
-  min-height: 48px;
+  min-height: 56px;
   padding: 0 15px 0 16px;
   border: 0;
   background: transparent;
@@ -617,4 +617,15 @@ a.row:active,
   color: var(--settings-muted);
   font-size: 12.5px;
   line-height: 18px;
+}
+
+/* 预测性返回：手势期间整页跟随右移并轻微缩小 */
+.page {
+  transform: translateX(calc(var(--back-progress, 0) * 26%))
+    scale(calc(1 - var(--back-progress, 0) * 0.06));
+  transition: transform 260ms cubic-bezier(0.2, 0.72, 0.25, 1);
+}
+
+.page[data-back='active'] {
+  transition: none;
 }
