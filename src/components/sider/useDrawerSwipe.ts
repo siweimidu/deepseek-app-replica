@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import { android } from '../../app/android.js'
 import { closeMobileSider, openMobileSider, useMobileSider } from './mobileSiderState.js'
 
@@ -25,7 +26,6 @@ type Track = {
   width: number
   openedAtStart: boolean
   progress: number
-  timer: number
 }
 
 export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
@@ -48,26 +48,31 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       frame?.style.removeProperty('--drawer-progress')
     }
 
-    /** 从当前位置过渡到终点，动画结束后再切状态，再清内联值 */
+    /**
+     * 松手收尾：启用过渡 → 同步提交开合状态 → 撤掉内联进度。
+     * 撤掉内联值的那一瞬，计算值从当前拖动位置变成 CSS 目标值，
+     * 过渡会自己把它动画过去，不存在"先弹回再打开"的顺序问题。
+     */
     const settle = (close: boolean) => {
       const state = track.current
       if (!state) {
         return
       }
       state.phase = 'settling'
-      const target = close ? 0 : 1
-      frameOf()?.removeAttribute('data-drawer-dragging')
-      setProgress(target)
-      window.clearTimeout(state.timer)
-      state.timer = window.setTimeout(() => {
+      track.current = null
+      const frame = frameOf()
+      if (!frame) {
+        return
+      }
+      frame.removeAttribute('data-drawer-dragging')
+      flushSync(() => {
         if (close) {
           closeMobileSider()
         } else {
           openMobileSider()
         }
-        clearInline()
-        track.current = null
-      }, 200)
+      })
+      frame.style.removeProperty('--drawer-progress')
     }
 
     const onStart = (event: TouchEvent) => {
@@ -96,7 +101,6 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
         width: drawer.offsetWidth || window.innerWidth,
         openedAtStart: useMobileSider.getState().open,
         progress: useMobileSider.getState().open ? 1 : 0,
-        timer: 0,
       }
     }
 
@@ -170,15 +174,20 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
     }
   }, [frameRef])
 
-  // 状态自愈：任何一次开合结束后都不允许残留半途的进度
+  /**
+   * 不变量：打开 ⇒ 进度恒为 1；关闭 ⇒ 不保留任何内联进度。
+   * 拖拽中不动它。这样即便某次收尾的顺序出了岔子，抽屉也不可能停在半途或弹回去。
+   */
   useEffect(
     () =>
-      useMobileSider.subscribe(() => {
+      useMobileSider.subscribe((state) => {
         const frame = frameRef.current
-        if (!frame) {
+        if (!frame || frame.hasAttribute('data-drawer-dragging')) {
           return
         }
-        if (!frame.hasAttribute('data-drawer-dragging')) {
+        if (state.open) {
+          frame.style.setProperty('--drawer-progress', '1')
+        } else {
           frame.style.removeProperty('--drawer-progress')
         }
       }),

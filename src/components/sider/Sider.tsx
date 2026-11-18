@@ -366,6 +366,8 @@ export const MobileSider = () => {
     // 自愈：状态一变就把拖动残留清掉，避免抽屉卡在半途
     frame?.style.removeProperty('--drawer-progress')
     frame?.removeAttribute('data-drawer-dragging')
+    // 抽屉一挂载就把宽度记下来，拖动时进度分母才是准的
+    syncWidth()
     if (drawer.current) {
       drawer.current.inert = !open
     }
