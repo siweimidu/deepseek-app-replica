@@ -195,7 +195,7 @@ public final class MainActivity extends Activity {
         // 状态栏/导航栏保持透明，颜色始终由页面本身决定，深浅色切换时不会留下灰边
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
-        int color = Color.parseColor(dark ? "#191919" : "#FFFFFF");
+        int color = Color.parseColor(dark ? "#151517" : "#FFFFFF");
         frame.setBackgroundColor(color);
         webView.setBackgroundColor(color);
     }
