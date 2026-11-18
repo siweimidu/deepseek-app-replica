@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { usePredictiveBack } from '../../app/backGesture.js'
 import { useTranslate } from '../../i18n/index.js'
 import { showToast } from '../base/toastState.js'
 import styles from './AvatarEditor.module.css'
 
+/** 取景框直径，与样式里的 .hole 半径保持一致 */
 const STAGE = 288
 const OUTPUT = 320
 
@@ -12,8 +14,8 @@ type Point = { x: number; y: number }
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
 
 /**
- * 头像裁切：图片在圆形取景框内拖动 / 双指缩放，确认后裁成正方形
- * 并用圆形 alpha 遮罩导出，界面里再按圆形显示。
+ * 头像裁切页：独立整页（portal 到 body，铺满屏幕），圆形取景框里拖动 / 双指缩放，
+ * 确认后按取景框范围裁成正方形保存，展示处再按圆形显示，避免导出出现黑角。
  */
 export const AvatarEditor = ({
   file,
@@ -30,8 +32,8 @@ export const AvatarEditor = ({
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 })
   const pointers = useRef(new Map<number, Point>())
   const stage = useRef<HTMLDivElement>(null)
-  usePredictiveBack(stage, onCancel)
   const gesture = useRef<{ distance: number; scale: number } | null>(null)
+  usePredictiveBack(stage, onCancel)
 
   useEffect(() => {
     const url = URL.createObjectURL(file)
@@ -59,11 +61,7 @@ export const AvatarEditor = ({
     [limit.x, limit.y]
   )
 
-  const zoomTo = (next: number, anchor?: Point) => {
-    const value = Math.min(4, Math.max(1, next))
-    setScale(value)
-    setOffset((current) => clampOffset(anchor ?? current))
-  }
+  const zoomTo = (next: number) => setScale(Math.min(4, Math.max(1, next)))
 
   const save = () => {
     if (!image) {
@@ -89,9 +87,9 @@ export const AvatarEditor = ({
     onDone(canvas.toDataURL('image/jpeg', 0.86))
   }
 
-  return (
-    <div className={styles.overlay} role="dialog" aria-modal="true">
-      <div className={styles.header}>
+  return createPortal(
+    <div className={styles.page} role="dialog" aria-modal="true">
+      <header className={styles.header}>
         <button type="button" className={styles.action} onClick={onCancel}>
           {t('cancel')}
         </button>
@@ -99,7 +97,7 @@ export const AvatarEditor = ({
         <button type="button" className={styles.action} data-primary="" onClick={save}>
           {t('accountAvatarDone')}
         </button>
-      </div>
+      </header>
       <div
         ref={stage}
         className={styles.stage}
@@ -119,8 +117,7 @@ export const AvatarEditor = ({
           pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
           if (pointers.current.size >= 2 && gesture.current) {
             const [first, second] = [...pointers.current.values()]
-            const ratio = distance(first, second) / (gesture.current.distance || 1)
-            zoomTo(gesture.current.scale * ratio)
+            zoomTo(gesture.current.scale * (distance(first, second) / (gesture.current.distance || 1)))
             return
           }
           setOffset((current) =>
@@ -142,7 +139,7 @@ export const AvatarEditor = ({
         }}
         onWheel={(event) => zoomTo(scale * (event.deltaY > 0 ? 0.94 : 1.06))}
       >
-        <div className={styles.hole} aria-hidden="true" />
+        <span className={styles.hole} aria-hidden="true" />
         {image ? (
           <img
             className={styles.image}
@@ -158,6 +155,7 @@ export const AvatarEditor = ({
         ) : null}
       </div>
       <p className={styles.hint}>{t('accountAvatarHint')}</p>
-    </div>
+    </div>,
+    document.body
   )
 }

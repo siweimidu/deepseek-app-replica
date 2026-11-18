@@ -1,18 +1,24 @@
-/* 头像裁切：铺满屏幕的取景层，颜色跟随主题。 */
-.overlay {
+﻿/* 头像裁切页：独立整页，铺满屏幕，自带不透明底色（不依赖 token，深浅色都稳）。 */
+.page {
   position: fixed;
   inset: 0;
-  z-index: 980;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
-  background: var(--dsw-alias-bg-base);
-  animation: fade-in 180ms ease-out;
+  background: #f7f7f9;
+  color: #101012;
+  /* 只由预测性返回手势驱动位移；不做入场动画，避免被冻结在起始帧 */
+  transform: translateX(calc(var(--back-progress, 0) * 100%));
+  transition: transform 240ms cubic-bezier(0.2, 0.72, 0.25, 1);
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
+.page[data-back='active'] {
+  transition: none;
+}
+
+body[data-ds-dark-theme] .page {
+  background: #0e0e10;
+  color: #f4f4f5;
 }
 
 .header {
@@ -20,27 +26,34 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  flex-shrink: 0;
+  padding: calc(12px + env(safe-area-inset-top)) 14px 12px;
+  border-bottom: 1px solid rgb(0 0 0 / 6%);
+}
+
+body[data-ds-dark-theme] .header {
+  border-bottom-color: rgb(255 255 255 / 8%);
 }
 
 .heading {
   font-size: 16px;
   font-weight: 600;
-  color: var(--dsw-alias-label-primary);
 }
 
 .action {
-  padding: 8px 10px;
+  padding: 8px 6px;
   border: 0;
   background: transparent;
-  color: color-mix(in srgb, var(--dsw-alias-label-primary) 62%, transparent);
+  color: inherit;
+  opacity: 0.62;
   font: inherit;
   font-size: 15px;
   cursor: pointer;
   transition: transform 240ms linear(0, 0.42 14%, 1.06 42%, 1);
 
   &[data-primary] {
-    color: var(--dsw-alias-brand-text);
+    color: #4d6bfe;
+    opacity: 1;
     font-weight: 600;
   }
 
@@ -52,8 +65,7 @@
 .stage {
   position: relative;
   flex: 1;
-  display: grid;
-  place-items: center;
+  min-height: 0;
   overflow: hidden;
   touch-action: none;
   cursor: grab;
@@ -63,34 +75,30 @@
   }
 }
 
-/* 取景框：圆圈内显示图片，四周压暗突出裁切范围 */
+/* 取景框遮罩：圆内透明、圆外压暗，半径与 STAGE/2 对齐 */
 .hole {
   position: absolute;
-  width: 288px;
-  height: 288px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 9999px rgb(0 0 0 / 58%);
-  outline: 1px solid color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
-  pointer-events: none;
+  inset: 0;
   z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(circle at center, transparent 143px, rgb(0 0 0 / 62%) 144px);
 }
 
 .image {
   position: absolute;
   top: 50%;
   left: 50%;
-  border-radius: 50%;
+  z-index: 1;
   object-fit: cover;
   user-select: none;
   -webkit-user-drag: none;
-  z-index: 1;
 }
 
 .hint {
-  margin: 0 0 calc(24px + env(safe-area-inset-bottom));
-  padding: 0 24px;
+  margin: 0;
+  padding: 14px 24px calc(20px + env(safe-area-inset-bottom));
   text-align: center;
   font-size: 12.5px;
   line-height: 18px;
-  color: color-mix(in srgb, var(--dsw-alias-label-primary) 52%, transparent);
+  opacity: 0.55;
 }
