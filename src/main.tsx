@@ -4,6 +4,7 @@ import { android } from './app/android.js'
 import { setupTheme } from './app/theme.js'
 import { ensureKatex } from './services/markdown/katex.js'
 import './app/theme.css'
+import './app/motion.css'
 import './app/global.css'
 import './app/android.css'
 

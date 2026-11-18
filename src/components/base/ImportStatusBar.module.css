@@ -20,7 +20,7 @@
   cursor: pointer;
   overflow: hidden;
   transform: translateY(-100%);
-  transition: transform 340ms linear(0, 0.28 6%, 0.72 16%, 1.06 26%, 1.02 40%, 0.99 58%, 1);
+  transition: transform var(--motion-reveal);
 }
 
 .bar[data-shown='true'] {
@@ -81,6 +81,6 @@
     height: 100%;
     transform-origin: left center;
     background: var(--dsw-alias-brand-text);
-    transition: transform 320ms linear(0, 0.32 8%, 0.79 20%, 1.03 30%, 1.01 46%, 1);
+    transition: transform var(--motion-metric);
   }
 }

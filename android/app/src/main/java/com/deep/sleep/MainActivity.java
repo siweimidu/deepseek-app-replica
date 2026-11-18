@@ -101,6 +101,10 @@ public final class MainActivity extends Activity {
             return WindowInsets.CONSUMED;
         });
         setContentView(frame);
+        // 真正铺满屏幕：内容画到系统状态栏/导航栏下面，留白由页面按 --android-status-inset 处理
+        getWindow().setDecorFitsSystemWindows(false);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
         setBars((getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
             == Configuration.UI_MODE_NIGHT_YES);
         WebView.setWebContentsDebuggingEnabled(

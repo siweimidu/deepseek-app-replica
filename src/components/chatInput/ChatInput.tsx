@@ -361,7 +361,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
                 <IconButton
                   size="xl"
                   tone="primary"
-                  icon={<AndroidCircle icon={showAttachments ? 'close' : 'add'} />}
+                  icon={<AndroidCircle icon="add" />}
                   aria-label={t(showAttachments ? 'close' : 'uploadFile')}
                   aria-expanded={showAttachments}
                   disabled={importingHistory}

@@ -368,6 +368,8 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
 export const MobileSider = () => {
   const open = useMobileSider((state) => state.open)
   const drawer = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ x: number; y: number; width: number; horizontal: boolean } | null>(null)
+  const dragged = useRef(false)
   useEffect(() => {
     if (drawer.current) {
       drawer.current.inert = !open
@@ -375,15 +377,121 @@ export const MobileSider = () => {
   }, [open])
   // 预测性返回：手势期间抽屉跟着手指往左退
   usePredictiveBack(drawer, closeMobileSider, android && open)
-  if (!android && !open) {
-    return null
+
+  /** 手势进行中直接改位移，松手再交给过渡动画收尾 */
+  const setOffset = (offset: number) => {
+    const element = drawer.current
+    if (!element) {
+      return
+    }
+    element.style.setProperty('--drawer-drag', `${offset}px`)
   }
+
+  const settle = (close: boolean) => {
+    const element = drawer.current
+    if (!element) {
+      return
+    }
+    const width = element.getBoundingClientRect().width
+    element.style.transition = ''
+    if (!close) {
+      setOffset(0)
+      return
+    }
+    // 先滑到底，动画结束后再真正关闭，避免自定义属性不参与过渡造成的跳变
+    setOffset(-width)
+    window.setTimeout(() => {
+      closeMobileSider()
+      requestAnimationFrame(() => setOffset(0))
+    }, 260)
+  }
+
   return (
     <>
-      {open ? <div className={styles.drawerMask} onClick={closeMobileSider} /> : null}
-      <div className={styles.drawer} ref={drawer} data-android-drawer={android ? '' : undefined}>
+      {!android && !open ? null : (
+        <>
+          {open ? <div className={styles.drawerMask} onClick={closeMobileSider} /> : null}
+      <div
+        className={styles.drawer}
+        ref={drawer}
+        data-android-drawer={android ? '' : undefined}
+        onPointerDown={(event) => {
+          if (!android || !open) {
+            return
+          }
+          drag.current = {
+            x: event.clientX,
+            y: event.clientY,
+            width: event.currentTarget.getBoundingClientRect().width,
+            horizontal: false,
+          }
+        }}
+        onPointerMove={(event) => {
+          const state = drag.current
+          const element = drawer.current
+          if (!state || !element) {
+            return
+          }
+          const dx = event.clientX - state.x
+          const dy = event.clientY - state.y
+          if (!state.horizontal) {
+            if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+              return
+            }
+            // 纵向优先交给列表滚动，只有明显横向才接管
+            if (Math.abs(dx) <= Math.abs(dy) * 1.2) {
+              drag.current = null
+              return
+            }
+            state.horizontal = true
+            dragged.current = true
+            try {
+              element.setPointerCapture(event.pointerId)
+            } catch {
+              // 指针已失效（例如被系统收回）时忽略即可
+            }
+            element.style.transition = 'none'
+          }
+          setOffset(Math.min(0, Math.max(-state.width, dx)))
+        }}
+        onPointerUp={(event) => {
+          const state = drag.current
+          drag.current = null
+          if (!state?.horizontal) {
+            return
+          }
+          const element = drawer.current
+          try {
+            if (element?.hasPointerCapture(event.pointerId)) {
+              element.releasePointerCapture(event.pointerId)
+            }
+          } catch {
+            // 同上，指针已失效时无需释放
+          }
+          const offset = Number.parseFloat(element?.style.getPropertyValue('--drawer-drag') ?? '0') || 0
+          settle(offset < -state.width * 0.3)
+          window.setTimeout(() => {
+            dragged.current = false
+          }, 140)
+        }}
+        onPointerCancel={() => {
+          if (drag.current?.horizontal) {
+            settle(false)
+          }
+          drag.current = null
+        }}
+        onClickCapture={(event) => {
+          // 刚拖动过就不要把这次手势当成点击
+          if (dragged.current) {
+            event.preventDefault()
+            event.stopPropagation()
+          }
+        }}
+      >
         <Sider mobile />
       </div>
+        </>
+      )}
     </>
   )
 }

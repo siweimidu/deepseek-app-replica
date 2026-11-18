@@ -28,8 +28,8 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   --sheet-in: 100%;
-  transform: translateY(calc(var(--sheet-in) + var(--back-progress, 0) * 55%));
-  transition: transform 420ms linear(0, 0.18 10%, 0.52 24%, 0.82 38%, 1.02 56%, 1.01 70%, 1);
+  transform: translateY(calc(var(--sheet-in) + var(--back-progress, 0) * 100%));
+  transition: transform var(--motion-sheet);
 }
 
 .sheetShown {
@@ -122,7 +122,7 @@
   background: transparent;
   color: color-mix(in srgb, var(--dsw-alias-label-primary) 58%, transparent);
   cursor: pointer;
-  transition: transform 260ms linear(0, 0.45 14%, 1.05 42%, 1);
+  transition: transform var(--motion-press);
 
   &:active {
     transform: scale(0.88);

@@ -4,8 +4,8 @@
   margin-inline: -12px;
   opacity: 0;
   transition:
-    grid-template-rows 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 160ms ease-out;
+    grid-template-rows var(--motion-sheet),
+    opacity 200ms ease-out;
 }
 
 .panel[data-open='true'] {
@@ -20,19 +20,19 @@
 
 .recent {
   display: flex;
-  gap: 10px;
-  padding: 20px 20px 0;
+  gap: 5px;
+  padding: 16px 16px 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 .recent button {
   position: relative;
-  flex: 0 0 74px;
-  height: 74px;
+  flex: 0 0 48px;
+  height: 48px;
   overflow: hidden;
   border: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 0;
   background: var(--dsw-alias-bg-skeleton);
 
@@ -60,13 +60,13 @@
   span {
     position: absolute;
     z-index: 1;
-    top: 6px;
-    right: 6px;
-    width: 19px;
-    height: 19px;
-    border: 1.5px solid rgb(255 255 255 / 85%);
+    top: 4px;
+    right: 4px;
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgb(255 255 255 / 92%);
     border-radius: 50%;
-    background: rgb(0 0 0 / 22%);
+    background: rgb(0 0 0 / 12%);
 
     svg {
       display: block;
@@ -93,27 +93,27 @@
 .actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  padding: 18px 20px 28px;
+  gap: 8px;
+  padding: 14px 16px 24px;
 
   button {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 6px;
     width: 100%;
-    height: 92px;
+    height: 78px;
     border: 0;
-    border-radius: 16px;
-    background: color-mix(in srgb, currentColor 6%, transparent);
+    border-radius: 20px;
+    background: color-mix(in srgb, currentColor 7%, transparent);
     color: inherit;
     font: inherit;
-    font-size: 15px;
+    font-size: 14px;
 
     svg {
-      width: 22px;
-      height: 22px;
+      width: 19px;
+      height: 19px;
     }
 
     &:active {

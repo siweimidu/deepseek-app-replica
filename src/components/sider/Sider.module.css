@@ -262,7 +262,14 @@
   width: var(--drawer-edge);
   padding-top: var(--android-status-inset, 0px);
   background: var(--dsw-alias-bg-base);
-  transform: translateX(calc((var(--drawer-progress) - 1 + var(--back-progress, 0)) * 100%));
+  /* 纵向滚动留给列表，横向留给「左滑关闭」 */
+  touch-action: pan-y;
+  transform: translateX(
+    calc(
+      (var(--drawer-progress) - 1 + var(--back-progress, 0)) * 100% +
+        var(--drawer-drag, 0px)
+    )
+  );
   transition: transform var(--drawer-transition);
   box-sizing: border-box;
   /* 单独一层交给合成器，滑动期间不触发页面重绘 */
@@ -354,7 +361,7 @@
   background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent);
   color: var(--dsw-alias-label-primary);
   cursor: pointer;
-  transition: transform 260ms linear(0, 0.42 14%, 1.06 42%, 1);
+  transition: transform var(--motion-press);
 
   &:active {
     transform: scale(0.88);
@@ -379,7 +386,7 @@
     color: inherit;
     font: inherit;
     font-size: 16px;
-    transition: transform 260ms linear(0, 0.42 14%, 1.06 42%, 1);
+    transition: transform var(--motion-press);
 
     &:active:not(:disabled) {
       transform: scale(0.96);
@@ -439,7 +446,7 @@
 [data-android] .mobile .settings {
   transition:
     background-color 150ms ease-out,
-    transform 300ms linear(0, 0.44 12%, 1.05 42%, 1);
+    transform var(--motion-press);
 
   &:active {
     background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 11%, transparent);
@@ -476,7 +483,7 @@
   font: inherit;
   font-size: 15px;
   cursor: pointer;
-  transition: transform 260ms linear(0, 0.42 14%, 1.06 42%, 1);
+  transition: transform var(--motion-press);
 
   &:active {
     transform: scale(0.93);

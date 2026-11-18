@@ -98,7 +98,7 @@
   transition:
     background-color 160ms ease-out,
     border-color 160ms ease-out,
-    transform 320ms linear(0, 0.5 12%, 1.12 42%, 0.98 64%, 1);
+    transform var(--motion-press);
 }
 
 .checked .checkbox {

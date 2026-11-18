@@ -24,18 +24,7 @@
   --drawer-edge: min(calc(100% - 68.4px), 380px);
   --drawer-progress: 0;
   /* 弹簧曲线：起手快、收尾轻微过冲再回稳，比 cubic-bezier 更有弹性 */
-  --drawer-transition: 430ms linear(
-    0,
-    0.12 6%,
-    0.36 14%,
-    0.64 24%,
-    0.86 34%,
-    0.98 45%,
-    1.018 56%,
-    1.012 68%,
-    0.998 82%,
-    1
-  );
+  --drawer-transition: var(--motion-reveal);
   touch-action: pan-y;
 }
 
