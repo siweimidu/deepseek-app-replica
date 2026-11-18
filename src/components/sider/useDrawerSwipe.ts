@@ -262,6 +262,21 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
     }
 
+    // 原生层判定到横滑后会调这个：原生能看到所有触摸，WebView 抢不走
+    const nativeBridge = (direction: string) => {
+      const opened = useMobileSider.getState().open
+      if (direction === 'left' && !opened) {
+        openMobileSider()
+      } else if (direction === 'right' && opened) {
+        closeMobileSider()
+      }
+      useSwipeDebug.setState((state) => ({
+        toggle: state.toggle + 1,
+        last: `native ${direction}`,
+      }))
+    }
+    ;(window as unknown as Record<string, unknown>).__dshSwipe = nativeBridge
+
     frame.addEventListener('touchstart', onTouchStart, { passive: true })
     frame.addEventListener('touchmove', onTouchMove, { passive: false })
     frame.addEventListener('touchend', onTouchEnd, { passive: true })

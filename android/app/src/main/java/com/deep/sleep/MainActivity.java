@@ -14,6 +14,7 @@ import android.graphics.Insets;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.view.WindowInsets;
@@ -55,6 +56,12 @@ public final class MainActivity extends Activity {
     private static final int CAMERA = 4;
     private static final int EXPORT_HISTORY = 5;
     private WebView webView;
+    // 横滑判定（原生层，绕开 WebView 的事件仲裁）
+    private float swipeDownX;
+    private float swipeDownY;
+    private boolean swipeTracking;
+    private static final float SWIPE_DP = 24f;
+    private static final float SWIPE_RATIO = 1.2f;
     private FrameLayout frame;
     private ApiKeyStore keys;
     private ValueCallback<Uri[]> fileCallback;
@@ -70,6 +77,46 @@ public final class MainActivity extends Activity {
     /** 导出包下载缓存：令牌 -> 文件，导入结束后由前端调用释放。 */
     private final Map<String, File> downloads = new ConcurrentHashMap<>();
     private final ExecutorService downloadExecutor = Executors.newSingleThreadExecutor();
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                swipeDownX = event.getX();
+                swipeDownY = event.getY();
+                swipeTracking = true;
+                break;
+            case MotionEvent.ACTION_UP:
+                if (swipeTracking) {
+                    swipeTracking = false;
+                    dispatchSwipeIfHorizontal(event.getX(), event.getY());
+                }
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                swipeTracking = false;
+                break;
+            default:
+                break;
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    /** 横滑超过 24dp 且明显偏横向时通知网页：left = 打开侧边栏，right = 回到对话 */
+    private void dispatchSwipeIfHorizontal(float upX, float upY) {
+        final float dx = upX - swipeDownX;
+        final float dy = upY - swipeDownY;
+        final float minPx = SWIPE_DP * getResources().getDisplayMetrics().density;
+        if (Math.abs(dx) < minPx || Math.abs(dx) <= Math.abs(dy) * SWIPE_RATIO) {
+            return;
+        }
+        final String direction = dx < 0 ? "left" : "right";
+        runOnUiThread(() -> {
+            if (webView != null) {
+                webView.evaluateJavascript(
+                    "window.__dshSwipe&&window.__dshSwipe('" + direction + "')", null);
+            }
+        });
+    }
 
     @Override
     public void onCreate(Bundle state) {
