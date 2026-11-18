@@ -62,3 +62,9 @@ body.change-theme *::after {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 搜索跳转时标出命中的关键词 */
+::highlight(dsh-search-hit) {
+  background-color: rgb(77 107 254 / 32%);
+  color: inherit;
+}

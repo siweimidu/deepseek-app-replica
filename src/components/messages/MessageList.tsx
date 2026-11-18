@@ -106,41 +106,110 @@ export const MessageList = ({
       restoreScrollRef.current = null
       return
     }
-    // 搜索点击后：精确滚到命中的那条消息并高亮
+    // 搜索点击后：滚到关键词所在的**那段文字**，并把关键词标出来
     if (scrollTarget && scrollTarget.sessionId === session.id && scroll) {
       const scroller = scroll
-      const messageId = scrollTarget.messageId
+      const { messageId, term } = scrollTarget
       stickyRef.current = false
-      // 立即消费掉目标；下面的定时器不依赖 effect 生命周期，不会被重跑取消
       clearScrollTarget()
 
-      const find = () =>
-        scroller.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(messageId)}"]`)
+      /** 在消息里找到关键词对应的 Range（跨节点也能定位） */
+      const findRange = (root: HTMLElement): Range | null => {
+        if (!term) {
+          return null
+        }
+        const needle = term.toLocaleLowerCase()
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+        const nodes: { node: Text; start: number }[] = []
+        let text = ''
+        let current: Node | null = walker.nextNode()
+        while (current) {
+          const textNode = current as Text
+          nodes.push({ node: textNode, start: text.length })
+          text += textNode.data
+          current = walker.nextNode()
+        }
+        const index = text.toLocaleLowerCase().indexOf(needle)
+        if (index < 0 || nodes.length === 0) {
+          return null
+        }
+        const locate = (offset: number) => {
+          for (let i = nodes.length - 1; i >= 0; i -= 1) {
+            if (offset >= nodes[i].start) {
+              return { node: nodes[i].node, offset: offset - nodes[i].start }
+            }
+          }
+          return { node: nodes[0].node, offset: 0 }
+        }
+        const from = locate(index)
+        const to = locate(index + needle.length)
+        const range = document.createRange()
+        try {
+          range.setStart(from.node, Math.min(from.offset, from.node.data.length))
+          range.setEnd(to.node, Math.min(to.offset, to.node.data.length))
+        } catch {
+          return null
+        }
+        return range
+      }
+
+      /** 用 CSS Highlight API 标出关键词（不支持就跳过，不影响定位） */
+      const highlight = (range: Range) => {
+        const api = (window as unknown as { CSS?: { highlights?: Map<string, unknown> }; Highlight?: unknown })
+        if (!api.CSS?.highlights || !api.Highlight) {
+          return
+        }
+        try {
+          api.CSS.highlights.set('dsh-search-hit', new (api.Highlight as new (r: Range) => unknown)(range))
+          window.setTimeout(() => api.CSS?.highlights?.delete('dsh-search-hit'), 2600)
+        } catch {
+          // 忽略
+        }
+      }
+
+      const anchorRect = () => {
+        const node = scroller.querySelector<HTMLElement>(
+          `[data-message-id="${CSS.escape(messageId)}"]`
+        )
+        if (!node) {
+          return null
+        }
+        const range = findRange(node)
+        if (range) {
+          highlight(range)
+          const box = range.getBoundingClientRect()
+          if (box.height > 0) {
+            return { rect: box, node }
+          }
+        }
+        return { rect: node.getBoundingClientRect(), node }
+      }
 
       const align = () => {
         if (!scroller.isConnected) {
           return
         }
-        const node = find()
-        if (!node) {
+        const found = anchorRect()
+        if (!found) {
           return
         }
-        if (!node.classList.contains(styles.flash)) {
-          node.classList.add(styles.flash)
-          window.setTimeout(() => node.classList.remove(styles.flash), 2000)
+        if (!found.node.classList.contains(styles.flash)) {
+          found.node.classList.add(styles.flash)
+          window.setTimeout(() => found.node.classList.remove(styles.flash), 2000)
         }
         const box = scroller.getBoundingClientRect()
-        const rect = node.getBoundingClientRect()
-        const centered =
-          scroller.scrollTop + (rect.top - box.top) - box.height / 2 + rect.height / 2
-        const top = Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight, centered))
-        if (Math.abs(scroller.scrollTop - top) > 2) {
-          scroller.scrollTo({ top, behavior: 'smooth' })
-          scrollTopRef.current = top
+        const { rect } = found
+        // 让关键词落在视口中部偏上（1/3 处），确保它一定可见
+        const desired = box.top + box.height * 0.32
+        const top = scroller.scrollTop + (rect.top - desired)
+        const max = scroller.scrollHeight - scroller.clientHeight
+        const next = Math.max(0, Math.min(max, top))
+        if (Math.abs(scroller.scrollTop - next) > 2) {
+          scroller.scrollTo({ top: next, behavior: 'smooth' })
+          scrollTopRef.current = next
         }
       }
 
-      // 消息可能分批渲染：等节点出现后多帧校正
       ;[0, 80, 200, 400, 700, 1100, 1600].forEach((delay) => window.setTimeout(align, delay))
     }
     stickyRef.current = true

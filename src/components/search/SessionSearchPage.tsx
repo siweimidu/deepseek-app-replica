@@ -183,7 +183,7 @@ export const SessionSearchPage = () => {
     // 用真实会话 id 跳转；id 是列表 key（会话 id + 消息序号），不能直接当会话 id
     void selectSession(hit.sessionId)
     if (hit.messageId) {
-      requestScrollToMessage(hit.sessionId, hit.messageId)
+      requestScrollToMessage(hit.sessionId, hit.messageId, query.trim())
     }
     closeSessionSearch()
   }
