@@ -1,4 +1,4 @@
-import whale from '../../assets/deepseek-whale.svg'
+import appIcon from '../../assets/deepsleep-avatar.jpg'
 import { useTranslate } from '../../i18n/index.js'
 import { useApiKeyForm } from './useApiKeyForm.js'
 import styles from './ApiKeyScreen.module.css'
@@ -16,7 +16,7 @@ export const ApiKeyScreen = () => {
           void form.submit()
         }}
       >
-        <img className={styles.whale} src={whale} alt="" />
+        <img className={styles.whale} src={appIcon} alt="" />
         <h1>{t('apiKeyStart')}</h1>
         <input
           aria-label="DeepSeek API Key"
