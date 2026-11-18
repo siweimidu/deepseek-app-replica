@@ -52,3 +52,13 @@ body.change-theme *::after {
     overscroll-behavior-y: none;
   }
 }
+
+/* 无障碍：偏好减少动效时，位移直接到位 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

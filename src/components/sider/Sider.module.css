@@ -275,8 +275,6 @@
   transform: translateX(calc((var(--drawer-progress) - 1 + var(--back-progress, 0)) * 100%));
   transition: transform var(--drawer-transition);
   box-sizing: border-box;
-  /* 单独一层交给合成器，滑动期间不触发页面重绘 */
-  will-change: transform;
   backface-visibility: hidden;
 }
 

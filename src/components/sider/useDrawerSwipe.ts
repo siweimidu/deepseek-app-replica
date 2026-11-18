@@ -4,37 +4,31 @@ import { android } from '../../app/android.js'
 import { closeMobileSider, openMobileSider, useMobileSider } from './mobileSiderState.js'
 
 /**
- * 侧边栏横滑（原生监听版）
+ * 侧边栏横滑
  *
  * 规则：对话页向「左」滑 → 打开侧边栏；侧边栏向「右」滑 → 回到对话。
  *
- * 这一版跟前几版的区别，都是为了在真机 WebView 上活下来：
- * 1. **不走 React 合成事件**，直接 addEventListener 到 frame 元素上。
- * 2. **touchmove 用 passive:false**，一旦判定为横滑就 preventDefault()，
- *    等于告诉浏览器"这个手势我接管了"——它就不会再判成滚动、也不会发 touchcancel。
- *    （之前用 passive:true，横滑一开始就被滚动抢走，手势在判向前就死了。）
- * 3. **不依赖 frameRef 之外的东西**：begin 直接用闭包里的元素。
- * 4. 状态切换只调 store，不碰 DOM；跟手只是附加效果。
- * 5. 计数器暴露给调试角标，出问题时能看出断在哪一环。
+ * 交互模型按「按下记坑，抬手判定」：
+ * - pointerdown：只记录起点，不做任何可见变化（避免"刚按下页面就跳走"）
+ * - pointermove：判定方向后才接管手势；接管即 preventDefault（touch, passive:false），
+ *   相当于告诉浏览器"这个手势我处理"，它就不会判成滚动、也不会发 touchcancel
+ * - pointerup：按距离与速度决定去向；**即时**还原/落位，不等定时器
+ * - pointercancel：立刻回到起始状态，绝不停在半途
+ *
+ * 动画：位移只走 transform（合成器廉价层）；will-change 只在手势与过渡期间挂着。
+ * 状态切换只调 store，不依赖任何 DOM 查询——拿不到元素也不会让开合失效。
  */
 
-const SLOP = 7
-const RATIO = 1.15
-const DISTANCE_PX = 24
-const PROGRESS_GATE = 0.18
-const COOLDOWN_MS = 320
-const FLICK_VELOCITY = 0.3
-const FLICK_WINDOW_MS = 140
+const SLOP = 6
+const RATIO = 1.1
+const DISTANCE_PX = 22
+const FLICK_VELOCITY = 0.28
+const FLICK_WINDOW_MS = 160
+const COOLDOWN_MS = 300
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
 
-type DebugState = {
-  visible: boolean
-  down: number
-  move: number
-  toggle: number
-  last: string
-}
+type DebugState = { visible: boolean; down: number; move: number; toggle: number; last: string }
 
 export const useSwipeDebug = create<DebugState>(() => ({
   visible: false,
@@ -52,7 +46,7 @@ type Drag = {
   y: number
   width: number
   opened: boolean
-  decided: false | 'opening' | 'closing'
+  axis: false | 'opening' | 'closing'
   progress: number
   lastX: number
   lastAt: number
@@ -69,37 +63,51 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       return
     }
 
-    const drawer = () => frame.querySelector<HTMLElement>('[data-android-drawer]')
+    const drawerWidth = () => {
+      const drawer = frame.querySelector<HTMLElement>('[data-android-drawer]')
+      return drawer?.offsetWidth || window.innerWidth
+    }
+
+    /** 接管手势：挂上临时 will-change，过渡设为 0（跟手） */
+    const claim = () => {
+      frame.setAttribute('data-drawer-dragging', '')
+      frame.style.setProperty('will-change', 'transform')
+    }
+
+    const release = () => {
+      frame.removeAttribute('data-drawer-dragging')
+    }
 
     const paint = (progress: number) => {
-      frame.setAttribute('data-drawer-dragging', '')
       frame.style.setProperty('--drawer-progress', String(clamp01(progress)))
     }
 
+    /** 即时收尾：先提交状态，同一帧撤掉内联值，交给 CSS 弹簧曲线走完 */
     const settle = (close: boolean) => {
-      frame.removeAttribute('data-drawer-dragging')
+      release()
       if (close) {
         closeMobileSider()
       } else {
         openMobileSider()
       }
       lastToggleAt.current = Date.now()
+      // 同一帧内撤内联值：计算值从当前位移变成目标值，过渡立刻从当前位置开始
+      frame.style.removeProperty('--drawer-progress')
+      window.setTimeout(() => frame.style.removeProperty('will-change'), 420)
       useSwipeDebug.setState((state) => ({
         toggle: state.toggle + 1,
-        last: `toggle ${close ? 'close' : 'open'}`,
+        last: `${close ? 'close' : 'open'} @${Date.now() % 1000}`,
       }))
-      requestAnimationFrame(() => frame.style.removeProperty('--drawer-progress'))
     }
 
     const begin = (x: number, y: number) => {
-      const element = drawer()
       const opened = useMobileSider.getState().open
       drag.current = {
         x,
         y,
-        width: element?.offsetWidth || window.innerWidth,
+        width: drawerWidth(),
         opened,
-        decided: false,
+        axis: false,
         progress: opened ? 1 : 0,
         lastX: x,
         lastAt: performance.now(),
@@ -108,7 +116,7 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       useSwipeDebug.setState((state) => ({ down: state.down + 1, last: 'down' }))
     }
 
-    /** 返回 true 表示已接管这次手势 */
+    /** 返回 true = 已接管，调用方应阻止默认滚动 */
     const move = (x: number, y: number) => {
       const state = drag.current
       if (!state) {
@@ -117,24 +125,25 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       const dx = x - state.x
       const dy = y - state.y
 
-      if (!state.decided) {
+      if (!state.axis) {
         if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) {
           return false
         }
         if (Math.abs(dx) <= Math.abs(dy) * RATIO) {
           drag.current = null
-          useSwipeDebug.setState({ last: 'vertical' })
+          useSwipeDebug.setState({ last: 'vertical → 放行' })
           return false
         }
         if (!state.opened && dx < 0) {
-          state.decided = 'opening'
+          state.axis = 'opening'
         } else if (state.opened && dx > 0) {
-          state.decided = 'closing'
+          state.axis = 'closing'
         } else {
           drag.current = null
-          useSwipeDebug.setState({ last: 'wrong-direction' })
+          useSwipeDebug.setState({ last: '方向不符 → 放行' })
           return false
         }
+        claim()
       }
 
       const now = performance.now()
@@ -143,23 +152,23 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
       state.lastX = x
       state.lastAt = now
-      state.progress = state.decided === 'opening' ? -dx / state.width : 1 - dx / state.width
+      state.progress = state.axis === 'opening' ? -dx / state.width : 1 - dx / state.width
       paint(state.progress)
       useSwipeDebug.setState((debug) => ({
         move: debug.move + 1,
-        last: `${state.decided} ${Math.round(state.progress * 100)}%`,
+        last: `${state.axis === 'opening' ? '开' : '关'} ${Math.round(state.progress * 100)}%`,
       }))
       return true
     }
 
-    const end = (x: number) => {
+    const decide = (x: number) => {
       const state = drag.current
       drag.current = null
-      if (!state || !state.decided) {
+      if (!state || !state.axis) {
         return
       }
       if (Date.now() - lastToggleAt.current < COOLDOWN_MS) {
-        frame.removeAttribute('data-drawer-dragging')
+        release()
         frame.style.removeProperty('--drawer-progress')
         return
       }
@@ -167,26 +176,25 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       const flick =
         performance.now() - state.lastAt < FLICK_WINDOW_MS &&
         Math.abs(state.velocity) > FLICK_VELOCITY
-      if (state.decided === 'opening') {
-        const open = flick
-          ? state.velocity < 0
-          : Math.abs(dx) >= DISTANCE_PX || state.progress > PROGRESS_GATE
+      if (state.axis === 'opening') {
+        const open = flick ? state.velocity < 0 : Math.abs(dx) >= DISTANCE_PX
         settle(!open)
         return
       }
-      const close = flick
-        ? state.velocity > 0
-        : Math.abs(dx) >= DISTANCE_PX || state.progress < 1 - PROGRESS_GATE
+      const close = flick ? state.velocity > 0 : Math.abs(dx) >= DISTANCE_PX
       settle(close)
     }
 
-    const cancel = () => {
+    /** 取消：立刻回到起点，不留半途 */
+    const restore = () => {
       const state = drag.current
       drag.current = null
-      if (!state || !state.decided) {
+      if (!state || !state.axis) {
         return
       }
-      settle(state.progress < 0.5)
+      release()
+      frame.style.removeProperty('--drawer-progress')
+      useSwipeDebug.setState({ last: 'cancel → 还原' })
     }
 
     const onTouchStart = (event: TouchEvent) => {
@@ -208,7 +216,6 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       if (!touch) {
         return
       }
-      // 抢到手就阻止默认行为：浏览器不再判成滚动，也就不会发 touchcancel
       if (move(touch.clientX, touch.clientY) && event.cancelable) {
         event.preventDefault()
       }
@@ -217,7 +224,7 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
     const onTouchEnd = (event: TouchEvent) => {
       const touch = event.changedTouches[0]
       if (touch) {
-        end(touch.clientX)
+        decide(touch.clientX)
       }
     }
 
@@ -236,36 +243,46 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
     }
     const onPointerMove = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse') {
-        move(event.clientX, event.clientY)
+      if (event.pointerType === 'mouse') {
+        return
+      }
+      if (move(event.clientX, event.clientY)) {
+        try {
+          if (!frame.hasPointerCapture(event.pointerId)) {
+            frame.setPointerCapture(event.pointerId)
+          }
+        } catch {
+          // 合成事件或指针已失效
+        }
       }
     }
     const onPointerUp = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse') {
-        end(event.clientX)
+        decide(event.clientX)
       }
     }
 
     frame.addEventListener('touchstart', onTouchStart, { passive: true })
     frame.addEventListener('touchmove', onTouchMove, { passive: false })
     frame.addEventListener('touchend', onTouchEnd, { passive: true })
-    frame.addEventListener('touchcancel', cancel, { passive: true })
+    frame.addEventListener('touchcancel', restore, { passive: true })
     frame.addEventListener('pointerdown', onPointerDown, { passive: true })
     frame.addEventListener('pointermove', onPointerMove, { passive: true })
     frame.addEventListener('pointerup', onPointerUp, { passive: true })
-    frame.addEventListener('pointercancel', cancel, { passive: true })
+    frame.addEventListener('pointercancel', restore, { passive: true })
 
     return () => {
       frame.removeEventListener('touchstart', onTouchStart)
       frame.removeEventListener('touchmove', onTouchMove)
       frame.removeEventListener('touchend', onTouchEnd)
-      frame.removeEventListener('touchcancel', cancel)
+      frame.removeEventListener('touchcancel', restore)
       frame.removeEventListener('pointerdown', onPointerDown)
       frame.removeEventListener('pointermove', onPointerMove)
       frame.removeEventListener('pointerup', onPointerUp)
-      frame.removeEventListener('pointercancel', cancel)
-      frame.removeAttribute('data-drawer-dragging')
+      frame.removeEventListener('pointercancel', restore)
+      release()
       frame.style.removeProperty('--drawer-progress')
+      frame.style.removeProperty('will-change')
     }
   }, [frameRef])
 

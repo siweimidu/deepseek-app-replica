@@ -44,6 +44,8 @@
 
 [data-android] .frame[data-drawer-dragging] {
   --drawer-transition: 0ms;
+  /* 拖动期间卡片也必须跟手，不能走弹簧过渡 */
+  --card-transition: 0ms;
 }
 
 /*
@@ -51,22 +53,25 @@
  * 这就是官方那条一眼可辨的边界。只让 transform 参与过渡，
  * 圆角/阴影在打开瞬间一次成型，不做逐帧插值（否则整页重绘会掉帧）。
  */
+[data-android] .frame {
+  --drawer-transition: var(--motion-drawer);
+}
+
 [data-android] .main {
   z-index: 1;
   box-sizing: border-box;
   padding-top: var(--android-status-inset, 0px);
   background: var(--dsw-alias-bg-base);
   transform-origin: left center;
-  transform: translateX(0);
+  transform: translateX(calc(var(--drawer-width, var(--drawer-edge)) * var(--drawer-progress)));
   border-radius: 0;
-  transition: transform var(--drawer-transition);
+  transition: transform var(--card-transition, var(--motion-card));
 }
 
 
 
 [data-android] .frame[data-drawer-open='true'] .main {
-  /* 跟着同一个 progress 值走，拖动时和抽屉一起动 */
-  transform: translateX(calc(var(--drawer-width, var(--drawer-edge)) * var(--drawer-progress)));
+  /* 位移由基础规则按 --drawer-progress 统一驱动；这里只补圆角与边界 */
   border-radius: 26px;
   overflow: hidden;
   box-shadow: -6px 0 16px rgb(0 0 0 / 38%);
