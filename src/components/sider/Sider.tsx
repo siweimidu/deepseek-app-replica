@@ -26,7 +26,7 @@ import { openSettings } from '../settings/settingsDialogState.js'
 import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
 import { SessionDetailSheet } from './SessionDetailSheet.js'
 import { SessionItem } from './SessionItem.js'
-import { useSessionSearch } from './useSessionSearch.js'
+import { openSessionSearch } from '../search/SessionSearchPage.js'
 import styles from './Sider.module.css'
 
 
@@ -38,8 +38,6 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const pinnedIds = useSettings((state) => state.pinnedSessions)
   const avatar = useSettings((state) => state.avatar)
   const androidDrawer = Boolean(mobile && android)
-  const [query, setQuery] = useState('')
-  const matches = useSessionSearch(query, sessions)
   const [now, setNow] = useState(Date.now)
   const [selecting, setSelecting] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(() => new Set())
@@ -48,18 +46,18 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const unpin = checked.size > 0 && [...checked].every((id) => pinnedIds.includes(id))
   const groups = useMemo(() => {
     if (!androidDrawer || pinnedIds.length === 0) {
-      return groupSessions(matches, now, t)
+      return groupSessions(sessions, now, t)
     }
-    const pinned = matches.filter((session) => pinnedIds.includes(session.id))
+    const pinned = sessions.filter((session) => pinnedIds.includes(session.id))
     const rest = groupSessions(
-      matches.filter((session) => !pinnedIds.includes(session.id)),
+      sessions.filter((session) => !pinnedIds.includes(session.id)),
       now,
       t
     )
     return pinned.length
       ? [{ key: 'pinned', label: t('androidPinned'), sessions: pinned }, ...rest]
       : rest
-  }, [androidDrawer, matches, now, pinnedIds, t])
+  }, [androidDrawer, sessions, now, pinnedIds, t])
   const [deleting, setDeleting] = useState<SessionSummary[]>([])
   const [deletePending, setDeletePending] = useState(false)
   const drawerOpen = useMobileSider((state) => state.open)
@@ -147,14 +145,15 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
           </div>
         </div>
       ) : androidDrawer ? (
-        <label className={styles.search}>
+        <label className={styles.search} onClick={() => openSessionSearch()}>
           <IconSearchOutline16 />
           <input
             type="search"
             placeholder={t('androidSearchChats')}
             aria-label={t('androidSearchChats')}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            value=""
+            readOnly
+            onFocus={() => openSessionSearch()}
           />
         </label>
       ) : (
@@ -490,9 +489,10 @@ export const MobileSider = () => {
               element?.parentElement?.style.getPropertyValue('--drawer-progress') ?? '1'
             ) || 1
           const travelled = event.clientX - state.x
-          // 往左拖按进度判断；往右轻轻一滑也直接收起（官方手感）
+          // 轻划也算数：往左 18px、往右 12% 都直接收起，不必拖到进度阈值
+          const flickLeft = travelled < -18
           const flickRight = travelled > state.width * 0.12
-          settle(flickRight || progress < 0.76)
+          settle(flickLeft || flickRight || progress < 0.76)
           window.setTimeout(() => {
             dragged.current = false
           }, 140)

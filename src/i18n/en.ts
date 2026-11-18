@@ -23,6 +23,7 @@ export const en = {
   androidPhotoAnalyze: 'Analyze this',
   androidPhotoAdvice: 'What should I do?',
   androidPhotoExplain: 'Explain this',
+  androidSearchEmpty: 'No matching conversations',
   androidSearchChats: 'Search chats',
   androidNoChats: 'No conversations yet',
   selectAll: 'Select all',

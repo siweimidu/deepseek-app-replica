@@ -42,22 +42,21 @@
   height: 22px;
 }
 
-/* 官方：电话是带圆形底色的按钮，比两侧裸图标更"重"一点 */
-[data-android] .call {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  /* 官方是干净的浅灰实底，不带任何投影 */
-  background: var(--dsw-alias-bg-skeleton);
-  box-shadow: none;
-  margin: 0 6px;
-
-  svg {
-    width: 24px;
-    height: 24px;
-  }
-}
 
 [data-android] .sound {
   margin: 0 4px;
+}
+
+/* 电话与音量、加号保持完全一致：透明底、同尺寸、无任何投影 */
+[data-android] .call,
+[data-android] .sound,
+[data-android] .newChat {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+
+[data-android] .call svg {
+  width: 22px;
+  height: 22px;
 }

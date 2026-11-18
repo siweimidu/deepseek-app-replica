@@ -1,0 +1,196 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { create } from 'zustand'
+import { useTranslate } from '../../i18n/index.js'
+import { loadSession } from '../../services/chat/db.js'
+import { buildReplyView } from '../../services/chat/view.js'
+import { selectSession, useChatStore } from '../../services/chat/store.js'
+import styles from './SessionSearchPage.module.css'
+
+type SearchState = {
+  open: boolean
+}
+
+const useSearchPage = create<SearchState>(() => ({ open: false }))
+
+export const openSessionSearch = () => useSearchPage.setState({ open: true })
+export const closeSessionSearch = () => useSearchPage.setState({ open: false })
+
+type Hit = {
+  id: string
+  title: string
+  snippet: string
+  updatedAt: number
+}
+
+const SNIPPET_LIMIT = 46
+const SCAN_LIMIT = 60
+
+type MessageLike = { role: string } & Record<string, unknown>
+
+/** 用户消息是纯文本，助手消息要过一遍回复视图才能拿到正文 */
+const messageText = (message: MessageLike) => {
+  if (message.role === 'user' && typeof message.content === 'string') {
+    return message.content
+  }
+  try {
+    return buildReplyView(message as never, false).answer?.text ?? ''
+  } catch {
+    return ''
+  }
+}
+
+const clock = (value: number) => {
+  const date = new Date(value)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+const ChatGlyph = () => (
+  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M4.6 12.4a7.4 7.4 0 0 1 14.8 0v3.9a3 3 0 0 1-3 3h-2.1"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+    />
+    <circle cx="12" cy="12.2" r="3.1" stroke="currentColor" strokeWidth="1.7" />
+    <path d="M9.4 16.6 8 19.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+  </svg>
+)
+
+export const SessionSearchPage = () => {
+  const t = useTranslate()
+  const open = useSearchPage((state) => state.open)
+  const sessions = useChatStore((state) => state.sessions)
+  const [query, setQuery] = useState('')
+  const [hits, setHits] = useState<Hit[]>([])
+  const [searching, setSearching] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    setQuery('')
+    setHits([])
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 60)
+    return () => window.clearTimeout(timer)
+  }, [open])
+
+  const term = query.trim().toLocaleLowerCase()
+  const recent = useMemo(() => sessions.slice(0, SCAN_LIMIT), [sessions])
+
+  useEffect(() => {
+    if (!term) {
+      setHits([])
+      setSearching(false)
+      return
+    }
+    let active = true
+    setSearching(true)
+    const timer = window.setTimeout(async () => {
+      const found: Hit[] = []
+      const loaded = await Promise.all(
+        recent.map(
+          async (summary) =>
+            useChatStore.getState().sessionCache[summary.id] ??
+            (await loadSession(summary.id).catch(() => undefined))
+        )
+      )
+      for (const [row, summary] of recent.entries()) {
+        if (!active) {
+          return
+        }
+        const titleHit = summary.title.toLocaleLowerCase().includes(term)
+        const session = loaded[row]
+        const messageHit = session?.messages.find((message) =>
+          messageText(message).toLocaleLowerCase().includes(term)
+        )
+        if (!titleHit && !messageHit) {
+          continue
+        }
+        const text = messageHit ? messageText(messageHit) : ''
+        const at = text.toLocaleLowerCase().indexOf(term)
+        const snippet = at >= 0
+          ? `${at > 12 ? '…' : ''}${text.slice(Math.max(0, at - 12), at + SNIPPET_LIMIT)}`
+          : summary.title
+        found.push({
+          id: summary.id,
+          title: summary.title,
+          snippet: snippet.replace(/\s+/g, ' ').trim(),
+          updatedAt: summary.updatedAt,
+        })
+        if (found.length >= 30) {
+          break
+        }
+      }
+      if (active) {
+        setHits(found)
+        setSearching(false)
+      }
+    }, 120)
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [term, recent])
+
+  if (!open) {
+    return null
+  }
+
+  const pick = (hit: Hit) => {
+    void selectSession(hit.id)
+    closeSessionSearch()
+  }
+
+  return (
+    <div className={styles.page} role="dialog" aria-modal="true">
+      <div className={styles.bar}>
+        <button type="button" className={styles.back} aria-label="返回" onClick={closeSessionSearch}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M14.5 5 8 12l6.5 7" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <div className={styles.field}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="10.8" cy="10.8" r="6.4" stroke="currentColor" strokeWidth="1.9" />
+            <path d="m15.6 15.6 4.1 4.1" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+          </svg>
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t('androidSearchChats')}
+            aria-label={t('androidSearchChats')}
+          />
+          {query ? (
+            <button type="button" className={styles.clear} aria-label="清除" onClick={() => setQuery('')}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" fill="currentColor" opacity="0.22" />
+                <path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+              </svg>
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className={styles.results}>
+        {hits.map((hit) => (
+          <button key={hit.id} type="button" className={styles.hit} onClick={() => pick(hit)}>
+            <span className={styles.glyph} aria-hidden="true">
+              <ChatGlyph />
+            </span>
+            <span className={styles.body}>
+              <span className={styles.title}>{hit.title}</span>
+              <span className={styles.snippet}>{hit.snippet}</span>
+            </span>
+            <span className={styles.time}>{clock(hit.updatedAt)}</span>
+          </button>
+        ))}
+        {term && !hits.length && !searching ? (
+          <p className={styles.empty}>{t('androidSearchEmpty')}</p>
+        ) : null}
+      </div>
+    </div>
+  )
+}

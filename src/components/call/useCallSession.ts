@@ -19,11 +19,6 @@ const SPEECH_LEVEL = 0.045
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/** 取回第一个完整句子：到句末标点为止，足够长才用，避免读出半句 */
-const takeSentence = (text: string): string => {
-  const match = /[^。！？!?…\n]{6,}[。！？!?…]/.exec(text)
-  return match ? match[0].trim() : ''
-}
 
 /**
  * 通话主循环：录一轮（静音判停）→ 转写 → 发消息 → 等回复 → 朗读 → 继续录。
@@ -164,22 +159,17 @@ export const useCallSession = (active: boolean) => {
           playback.current = null
         }
 
-        // 1) 等到第一句
-        let spoken = ''
+        // 等这一轮回复生成完，整段一次性朗读：分句朗读会出现听到的和看到的对不上
+        let spokenText = ''
         let replyId: string | null = null
-        for (let step = 0; step < 200; step++) {
+        for (let step = 0; step < 1800; step++) {
           const snapshot = replyText()
           replyId = snapshot.id ?? replyId
-          const sentence = takeSentence(snapshot.text)
-          if (sentence) {
-            spoken = sentence
+          if (!snapshot.streaming && step > 4) {
+            spokenText = snapshot.text
             break
           }
-          if (!snapshot.streaming && snapshot.text) {
-            spoken = snapshot.text
-            break
-          }
-          await wait(90)
+          await wait(120)
           if (ticket !== loop.current) {
             return
           }
@@ -187,29 +177,8 @@ export const useCallSession = (active: boolean) => {
         if (ticket !== loop.current) {
           return
         }
-        if (spoken) {
-          await speakText(spoken, replyId)
-        }
-        if (ticket !== loop.current) {
-          return
-        }
-
-        // 2) 等这一轮结束，把没读的部分补上
-        let rest = ''
-        for (let step = 0; step < 1800; step++) {
-          const snapshot = replyText()
-          replyId = snapshot.id ?? replyId
-          if (!snapshot.streaming && step > 4) {
-            rest = snapshot.text.slice(spoken.length).trim()
-            break
-          }
-          await wait(120)
-        }
-        if (ticket !== loop.current) {
-          return
-        }
-        if (rest) {
-          await speakText(rest, replyId)
+        if (spokenText.trim()) {
+          await speakText(spokenText, replyId)
         }
         if (ticket !== loop.current) {
           return

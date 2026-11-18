@@ -22,6 +22,7 @@ export const zh = {
   androidPhotoAnalyze: '分析一下',
   androidPhotoAdvice: '怎么办',
   androidPhotoExplain: '解释一下',
+  androidSearchEmpty: '没有找到相关对话',
   androidSearchChats: '搜索对话内容...',
   androidNoChats: '暂无历史对话',
   selectAll: '全选',

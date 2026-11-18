@@ -13,6 +13,7 @@ import {
 import { ImportStatusBar } from '../components/base/ImportStatusBar.js'
 import { VoiceCallScreen } from '../components/call/VoiceCallScreen.js'
 import { SearchPanel } from '../components/search/SearchPanel.js'
+import { SessionSearchPage } from '../components/search/SessionSearchPage.js'
 import { closeSearchPanel, useSearchPanel } from '../components/search/searchPanelState.js'
 import { SessionView } from '../components/session/SessionView.js'
 import { MobileHeader } from '../components/session/MobileHeader.js'
@@ -184,6 +185,7 @@ export const App = () => {
         <SearchPanel />
       </div>
       {android ? <AndroidSettings /> : <SettingsDialog />}
+      <SessionSearchPage />
       <VoiceCallScreen />
       <ImportStatusBar />
       <Toast />
