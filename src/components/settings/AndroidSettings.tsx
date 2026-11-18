@@ -32,6 +32,7 @@ import {
 import { showToast } from '../base/toastState.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
 import { closeSettings, useSettingsDialog } from './settingsDialogState.js'
+import defaultAvatar from '../../assets/deepsleep-avatar.jpg'
 import { AvatarEditor } from './AvatarEditor.js'
 import styles from './AndroidSettings.module.css'
 
@@ -435,7 +436,7 @@ const Settings = ({ start }: { start: Page }) => {
                 onClick={() => avatarInput.current?.click()}
               >
                 <span className={styles.avatarPreview}>
-                  {avatar ? <img src={avatar} alt="" /> : <Profile />}
+                  <img src={avatar ?? defaultAvatar} alt="" />
                 </span>
                 <span className={styles.avatarText}>
                   <span className={styles.avatarName}>{tr('头像', 'Photo')}</span>

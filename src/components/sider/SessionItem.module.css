@@ -60,8 +60,10 @@
 
   .action {
     position: absolute;
-    right: 4px;
+    right: 6px;
     display: flex;
+    /* 官方那个「⋯」是灰色，不跟着选中行的蓝字走 */
+    color: color-mix(in srgb, var(--dsw-alias-label-primary) 46%, transparent);
     opacity: 0;
     pointer-events: none;
   }

@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { android } from '../../app/android.js'
+import defaultAvatar from '../../assets/deepsleep-avatar.jpg'
 import { usePredictiveBack } from '../../app/backGesture.js'
 import { useTranslate } from '../../i18n/index.js'
 import {
@@ -28,12 +29,6 @@ import { SessionItem } from './SessionItem.js'
 import { useSessionSearch } from './useSessionSearch.js'
 import styles from './Sider.module.css'
 
-const PersonIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <circle cx="12" cy="8" r="4.15" />
-    <path d="M3 23a9 7 0 0 1 18 0z" />
-  </svg>
-)
 
 /** 展开的侧边栏：名称与收起按钮、开启新对话、按时间分组的会话列表、底部设置；移动端放在抽屉里，收起按钮关闭抽屉 */
 export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
@@ -261,11 +256,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
           >
             <span className={styles.settingsIcon} data-avatar={androidDrawer ? '' : undefined}>
               {androidDrawer ? (
-                avatar ? (
-                  <img className={styles.avatarImage} src={avatar} alt="" />
-                ) : (
-                  <PersonIcon />
-                )
+                <img className={styles.avatarImage} src={avatar ?? defaultAvatar} alt="" />
               ) : (
                 <IconSettingsOutline16 />
               )}
@@ -498,7 +489,10 @@ export const MobileSider = () => {
             Number.parseFloat(
               element?.parentElement?.style.getPropertyValue('--drawer-progress') ?? '1'
             ) || 1
-          settle(progress < 0.76)
+          const travelled = event.clientX - state.x
+          // 往左拖按进度判断；往右轻轻一滑也直接收起（官方手感）
+          const flickRight = travelled > state.width * 0.12
+          settle(flickRight || progress < 0.76)
           window.setTimeout(() => {
             dragged.current = false
           }, 140)
