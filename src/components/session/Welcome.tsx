@@ -1,6 +1,6 @@
 import { useIsMobile } from '../../app/viewport.js'
 import { android } from '../../app/android.js'
-import whale from '../../assets/deepseek-whale.svg'
+import appIcon from '../../assets/deepsleep-avatar.jpg'
 import { useTranslate, type TranslationKey } from '../../i18n/index.js'
 import { ChatInput } from '../chatInput/ChatInput.js'
 import { MobileHeader } from './MobileHeader.js'
@@ -30,7 +30,7 @@ export const Welcome = () => {
       {isMobile ? <MobileHeader /> : null}
       <div className={styles.welcome}>
         <div className={styles.greeting}>
-          {android ? <img src={whale} alt="" /> : null}
+          {android ? <img className={styles.appIcon} src={appIcon} alt="" /> : null}
           {t(android ? greetingKey() : 'welcomeMessageChat250808')}
         </div>
         <ChatInput sessionId={null} />
