@@ -1,4 +1,6 @@
 import { IconMenuOutline20, IconNewChatOutline20 } from '../base/icons.js'
+import { IconPhoneOutline20 } from '../base/appIcons.js'
+import { openVoiceCall } from '../call/callState.js'
 import { useTranslate } from '../../i18n/index.js'
 import { android } from '../../app/android.js'
 import { newChat } from '../../services/chat/store.js'
@@ -41,6 +43,19 @@ export const MobileHeader = ({ title }: { title?: string }) => {
                   stopReadAloud()
                 }
                 showToast({ key: autoRead ? 'androidAutoReadDisabled' : 'androidAutoReadEnabled' })
+              }}
+            />
+          ) : null}
+          {android ? (
+            <IconButton
+              size="xl"
+              tone="primary"
+              className={styles.call}
+              icon={<IconPhoneOutline20 />}
+              aria-label={t('callStart')}
+              onClick={() => {
+                stopReadAloud()
+                openVoiceCall()
               }}
             />
           ) : null}

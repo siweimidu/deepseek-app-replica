@@ -11,6 +11,7 @@ import {
   useChatStore,
 } from '../services/chat/store.js'
 import { ImportStatusBar } from '../components/base/ImportStatusBar.js'
+import { VoiceCallScreen } from '../components/call/VoiceCallScreen.js'
 import { SearchPanel } from '../components/search/SearchPanel.js'
 import { closeSearchPanel, useSearchPanel } from '../components/search/searchPanelState.js'
 import { SessionView } from '../components/session/SessionView.js'
@@ -183,6 +184,7 @@ export const App = () => {
         <SearchPanel />
       </div>
       {android ? <AndroidSettings /> : <SettingsDialog />}
+      <VoiceCallScreen />
       <ImportStatusBar />
       <Toast />
     </>

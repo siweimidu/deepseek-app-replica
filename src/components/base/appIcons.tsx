@@ -99,3 +99,30 @@ export const IconIdOutline20 = () => (
     <path {...line} d="M6.4 15.2c.4-1.1 1.4-1.7 2.6-1.7s2.2.6 2.6 1.7M14.6 10.2h3.4M14.6 13.6h3.4" />
   </svg>
 )
+
+/** 通话入口：听筒 */
+export const IconPhoneOutline20 = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      {...line}
+      d="M6.6 3.4h2.2l1.5 3.6-1.8 1.2a11.4 11.4 0 0 0 5.3 5.3l1.2-1.8 3.6 1.5v2.2a2.2 2.2 0 0 1-2.4 2.2A16.6 16.6 0 0 1 4.4 5.8a2.2 2.2 0 0 1 2.2-2.4Z"
+    />
+  </svg>
+)
+
+/** 挂断：听筒朝下 */
+export const IconPhoneOffOutline = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      {...line}
+      d="M3.2 10.4c4.9-3.5 12.7-3.5 17.6 0 .7.5.9 1.5.4 2.2l-1.4 1.9a1.6 1.6 0 0 1-2 .4l-2-1.1a1.6 1.6 0 0 1-.8-1.5l.1-1.1a12 12 0 0 0-4.2 0l.1 1.1a1.6 1.6 0 0 1-.8 1.5l-2 1.1a1.6 1.6 0 0 1-2-.4l-1.4-1.9a1.6 1.6 0 0 1 .4-2.2Z"
+    />
+  </svg>
+)
+
+/** 通话页右上角：切换/设置 */
+export const IconSwitchOutline20 = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+    <path {...line} d="M4 8.6h15.2M20 8.6l-3.4-3.2M20 15.4H4.8M4.8 15.4l3.4 3.2" />
+  </svg>
+)

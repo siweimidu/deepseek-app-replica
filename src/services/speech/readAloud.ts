@@ -74,6 +74,89 @@ export const describeReadAloudError = (error: unknown): TranslationMessage | str
 }
 
 /**
+ * 朗读的核心：请求裸 PCM 流并按顺序排程播放，返回的 Promise 在播放结束、
+ * 被中止或出错时 resolve/reject。通话模式需要等它说完再继续录音。
+ */
+const speak = async (
+  messageId: string,
+  text: string,
+  controller: AbortController,
+  context: AudioContext,
+  onError: (error: unknown) => void
+): Promise<void> => {
+  current = { controller, context }
+  useReadAloud.setState({ messageId, status: 'loading' })
+  // 音色在开始朗读时读取，设置中切换后下一次朗读生效
+  const { apiKey, ttsVoice } = useSettings.getState()
+  let nextTime = 0
+  let lastSource: AudioBufferSourceNode | null = null
+  let rest = new Uint8Array(0)
+  try {
+    const stream = await synthesize(apiKey ?? '', text, ttsVoice, controller.signal)
+    const reader = stream.getReader()
+    controller.signal.addEventListener('abort', () => void reader.cancel().catch(() => {}))
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+      const bytes = new Uint8Array(rest.length + value.length)
+      bytes.set(rest)
+      bytes.set(value, rest.length)
+      const samples = toFloat32(bytes)
+      rest = bytes.slice(samples.length * 2)
+      if (samples.length === 0) {
+        continue
+      }
+      const buffer = context.createBuffer(1, samples.length, TTS_SAMPLE_RATE)
+      buffer.copyToChannel(samples, 0)
+      const source = context.createBufferSource()
+      source.buffer = buffer
+      source.connect(context.destination)
+      // 网络慢于播放时从当前时间续上，不补播过去的时间
+      nextTime = Math.max(nextTime, context.currentTime + (lastSource ? 0 : START_DELAY))
+      source.start(nextTime)
+      nextTime += buffer.duration
+      lastSource = source
+      if (useReadAloud.getState().status === 'loading') {
+        useReadAloud.setState({ status: 'playing' })
+      }
+    }
+    const tail = lastSource
+    if (tail) {
+      await new Promise<void>((resolve) => {
+        tail.onended = () => resolve()
+        controller.signal.addEventListener('abort', () => resolve())
+      })
+    }
+  } catch (error) {
+    if (!controller.signal.aborted) {
+      onError(error)
+    }
+  } finally {
+    finish(controller)
+  }
+}
+
+/** 朗读一段文本并等它播完：通话模式一轮回答结束后再继续听 */
+export const readAloudText = async (
+  messageId: string,
+  text: string,
+  signal: AbortSignal,
+  onError: (error: unknown) => void
+) => {
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  signal.addEventListener('abort', abort)
+  const context = new AudioContext({ sampleRate: TTS_SAMPLE_RATE })
+  try {
+    await speak(messageId, text, controller, context, onError)
+  } finally {
+    signal.removeEventListener('abort', abort)
+  }
+}
+
+/**
  * 开始朗读一条回复的正文；同一条正在朗读时调用等于停止。
  * 必须在点击事件中同步调用：AudioContext 需要用户手势才能出声。
  */
@@ -89,56 +172,5 @@ export const toggleReadAloud = (
   }
   const controller = new AbortController()
   const context = new AudioContext({ sampleRate: TTS_SAMPLE_RATE })
-  current = { controller, context }
-  useReadAloud.setState({ messageId, status: 'loading' })
-  // 音色在开始朗读时读取，设置中切换后下一次朗读生效
-  const { apiKey, ttsVoice } = useSettings.getState()
-
-  void (async () => {
-    let nextTime = 0
-    let lastSource: AudioBufferSourceNode | null = null
-    let rest = new Uint8Array(0)
-    try {
-      const stream = await synthesize(apiKey ?? '', text, ttsVoice, controller.signal)
-      const reader = stream.getReader()
-      controller.signal.addEventListener('abort', () => void reader.cancel().catch(() => {}))
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) {
-          break
-        }
-        const bytes = new Uint8Array(rest.length + value.length)
-        bytes.set(rest)
-        bytes.set(value, rest.length)
-        const samples = toFloat32(bytes)
-        rest = bytes.slice(samples.length * 2)
-        if (samples.length === 0) {
-          continue
-        }
-        const buffer = context.createBuffer(1, samples.length, TTS_SAMPLE_RATE)
-        buffer.copyToChannel(samples, 0)
-        const source = context.createBufferSource()
-        source.buffer = buffer
-        source.connect(context.destination)
-        // 网络慢于播放时从当前时间续上，不补播过去的时间
-        nextTime = Math.max(nextTime, context.currentTime + (lastSource ? 0 : START_DELAY))
-        source.start(nextTime)
-        nextTime += buffer.duration
-        lastSource = source
-        if (useReadAloud.getState().status === 'loading') {
-          useReadAloud.setState({ status: 'playing' })
-        }
-      }
-      if (lastSource) {
-        lastSource.onended = () => finish(controller)
-      } else {
-        finish(controller)
-      }
-    } catch (error) {
-      if (!controller.signal.aborted) {
-        finish(controller)
-        onError(error)
-      }
-    }
-  })()
+  void speak(messageId, text, controller, context, onError)
 }
