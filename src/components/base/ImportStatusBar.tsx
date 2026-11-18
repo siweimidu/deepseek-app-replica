@@ -10,7 +10,7 @@ import styles from './ImportStatusBar.module.css'
  * 这一条仍然跟随用户在整个 App 内显示进度，点击回到数据管理页。
  */
 export const ImportStatusBar = () => {
-  const { phase, percent, sessions, finished } = useImportJob()
+  const { phase, percent, sessions } = useImportJob()
   const [shown, setShown] = useState(false)
   const active = phase === 'downloading' || phase === 'reading' || phase === 'writing'
 
@@ -22,30 +22,21 @@ export const ImportStatusBar = () => {
     return () => cancelAnimationFrame(frame)
   }, [active])
 
-  // 完成后再停留一会儿展示结果，然后自动收起。
+  // 导入完成不展示任何结果条：直接把任务收掉，只保留进行中的进度
   useEffect(() => {
-    if (phase !== 'done') {
-      return
-    }
-    setShown(true)
-    const timer = setTimeout(() => {
-      setShown(false)
+    if (phase === 'done') {
       dismissImportJob()
-    }, 2400)
-    return () => clearTimeout(timer)
+    }
   }, [phase])
 
-  if (phase === 'idle' || phase === 'error') {
+  if (phase === 'idle' || phase === 'error' || phase === 'done') {
     return null
   }
   const value = Math.round(percent * 100)
-  const total = (finished?.added ?? 0) + (finished?.updated ?? 0)
   const label =
-    phase === 'done'
-      ? translate(total === 1 ? 'historyImportedOne' : 'historyImported', { count: total })
-      : phase === 'downloading'
-        ? translate('historyImportDownloading', { percent: value })
-        : translate('historyImportProgress', { percent: value })
+    phase === 'downloading'
+      ? translate('historyImportDownloading', { percent: value })
+      : translate('historyImportProgress', { percent: value })
 
   return (
     <button

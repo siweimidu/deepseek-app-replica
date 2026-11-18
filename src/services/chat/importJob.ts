@@ -73,15 +73,6 @@ const run = (task: (report: (phase: ImportPhase, value: number) => void) => Prom
     try {
       await task(report)
       useImportJob.setState({ phase: 'done', percent: 1 })
-      const { finished } = useImportJob.getState()
-      showToast(
-        finished
-          ? {
-              key: finished.added + finished.updated === 1 ? 'historyImportedOne' : 'historyImported',
-              params: { count: finished.added + finished.updated },
-            }
-          : { key: 'historyImportFailed' }
-      )
     } catch (error) {
       const message = describe(error)
       useImportJob.setState({ phase: 'error', failure: message })
