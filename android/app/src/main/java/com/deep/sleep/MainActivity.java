@@ -680,6 +680,20 @@ public final class MainActivity extends Activity {
             return android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP);
         }
 
+        /** 给「版本信息」用：一眼能看出装的是哪个包、哪个构建。 */
+        @JavascriptInterface
+        public String versionLabel() {
+            try {
+                android.content.pm.PackageInfo pack =
+                    getPackageManager().getPackageInfo(getPackageName(), 0);
+                long code = android.os.Build.VERSION.SDK_INT >= 28
+                    ? pack.getLongVersionCode() : pack.versionCode;
+                return getPackageName() + " · " + pack.versionName + " · " + code;
+            } catch (Exception error) {
+                return getPackageName();
+            }
+        }
+
         @JavascriptInterface
         public void releaseHistoryDownload(String token) {
             File file = downloads.remove(token);

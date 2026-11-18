@@ -18,6 +18,7 @@ type AndroidBridge = {
   finishRecording: (keep: boolean) => boolean
   recordingLevel: () => number
   /** 开始下载导出包，返回本次下载的令牌；空字符串表示拒绝。 */
+  versionLabel: () => string
   startHistoryDownload: (url: string) => string
   releaseHistoryDownload: (token: string) => void
 }

@@ -35,7 +35,8 @@ import { closeSettings, useSettingsDialog } from './settingsDialogState.js'
 import { AvatarEditor } from './AvatarEditor.js'
 import styles from './AndroidSettings.module.css'
 
-const appVersion = document.querySelector<HTMLMetaElement>(
+const nativeVersion = android?.versionLabel?.()
+const appVersion = nativeVersion ?? document.querySelector<HTMLMetaElement>(
   'meta[name="application-version"]'
 )?.content
 
