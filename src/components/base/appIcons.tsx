@@ -136,7 +136,7 @@ export const IconSwitchOutline20 = () => (
   </svg>
 )
 
-/** 收起侧边栏：两个圆点 + 一条竖线 */
+/** 收起侧边栏：上长下短两条横线，左对齐（对齐官方图标） */
 export const IconCollapseSidebar16 = () => (
   <svg
     width="22"
@@ -144,12 +144,11 @@ export const IconCollapseSidebar16 = () => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="1.8"
+    strokeWidth="1.9"
     strokeLinecap="round"
     aria-hidden="true"
   >
-    <circle cx="9.2" cy="9.2" r="1.45" fill="currentColor" stroke="none" />
-    <circle cx="9.2" cy="14.8" r="1.45" fill="currentColor" stroke="none" />
-    <path d="M15.4 5.8v12.4" />
+    <path d="M4 7.7h16" />
+    <path d="M4 16.5h8.8" />
   </svg>
 )
