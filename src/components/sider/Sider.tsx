@@ -374,6 +374,9 @@ export const MobileSider = () => {
     if (drawer.current) {
       drawer.current.inert = !open
     }
+    if (open) {
+      syncWidth()
+    }
   }, [open])
   // 预测性返回：手势期间抽屉跟着手指往左退
   usePredictiveBack(drawer, closeMobileSider, android && open)
@@ -385,6 +388,16 @@ export const MobileSider = () => {
       return
     }
     frame.style.setProperty('--drawer-progress', String(Math.min(1, Math.max(0, value))))
+  }
+
+  /** 抽屉宽度只由这里算一次，抽屉与卡片共用同一个像素值 */
+  const syncWidth = () => {
+    const element = drawer.current
+    const frame = element?.parentElement
+    if (!element || !frame) {
+      return
+    }
+    frame.style.setProperty('--drawer-width', `${element.getBoundingClientRect().width}px`)
   }
 
   const releaseDrag = () => {

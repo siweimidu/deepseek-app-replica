@@ -84,6 +84,13 @@ const speak = async (
   context: AudioContext,
   onError: (error: unknown) => void
 ): Promise<void> => {
+  // 上一段朗读如果还在播，必须先掐断并关掉它的 AudioContext：
+  // 只 abort 不 close 的话，已经排程的 buffer 会继续出声，听起来像几个人同时说话。
+  const previous = current
+  if (previous && previous.controller !== controller) {
+    previous.controller.abort()
+    void previous.context.close().catch(() => undefined)
+  }
   current = { controller, context }
   useReadAloud.setState({ messageId, status: 'loading' })
   // 音色在开始朗读时读取，设置中切换后下一次朗读生效
@@ -135,6 +142,10 @@ const speak = async (
     }
   } finally {
     finish(controller)
+    // finish 只处理 current 指向自己的情况；无论如何都要把自己的 context 关掉
+    if (context.state !== 'closed') {
+      void context.close().catch(() => undefined)
+    }
   }
 }
 

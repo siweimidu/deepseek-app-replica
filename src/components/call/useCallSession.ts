@@ -158,6 +158,8 @@ export const useCallSession = (active: boolean) => {
 
         if (reply.text) {
           setPhase('speaking')
+          // 新一轮朗读前，先停掉可能还在播的上一段
+          playback.current?.abort()
           playback.current = new AbortController()
           await readAloudText(
             reply.id ?? `call-${Date.now()}`,

@@ -263,7 +263,7 @@
 [data-android] .drawer {
   /* 抽屉盖在正文之上：正文是 z-index 1 的不透明层 */
   z-index: 2;
-  width: var(--drawer-edge);
+  width: var(--drawer-width, var(--drawer-edge));
   padding-top: var(--android-status-inset, 0px);
   /* 抽屉底色明显比对话区亮一档，右边界给一条看得见的亮线 */
   --drawer-surface: var(--dsw-specific-sidebar-fill);

@@ -66,7 +66,7 @@
 
 [data-android] .frame[data-drawer-open='true'] .main {
   /* 跟着同一个 progress 值走，拖动时和抽屉一起动 */
-  transform: translateX(calc(var(--drawer-edge) * var(--drawer-progress)));
+  transform: translateX(calc(var(--drawer-width, var(--drawer-edge)) * var(--drawer-progress)));
   border-radius: 26px;
   overflow: hidden;
   box-shadow: -12px 0 40px rgb(0 0 0 / 52%);
