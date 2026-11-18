@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { create } from 'zustand'
+import { CARD_SPRING, DRAWER_SPRING, springTo } from '../../app/spring.js'
 import { android } from '../../app/android.js'
 import { closeMobileSider, openMobileSider, useMobileSider } from './mobileSiderState.js'
 
@@ -54,6 +55,8 @@ type Drag = {
 export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
   const drag = useRef<Drag | null>(null)
   const lastToggleAt = useRef(0)
+  const animations = useRef<{ stop: () => void }[]>([])
+  const lastVelocity = useRef(0)
 
   useEffect(() => {
     const frame = frameRef.current
@@ -76,31 +79,62 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
     }
 
     const paint = (progress: number) => {
-      frame.style.setProperty('--drawer-progress', String(clamp01(progress)))
+      const value = String(clamp01(progress))
+      frame.style.setProperty('--drawer-progress', value)
+      frame.style.setProperty('--card-progress', value)
     }
 
+    const stopAnimations = () => {
+      animations.current.forEach((item) => item.stop())
+      animations.current = []
+    }
+
+    /**
+     * 收尾：用 motion 的弹簧把进度弹到终点。
+     * 抽屉和卡片各跑一条弹簧（卡片稍软），所以是真实物理回弹，不是近似曲线。
+     */
     const settle = (close: boolean) => {
       release()
-      // 动画期间卸掉裁剪/投影，真机上少一大块光栅化成本
+      stopAnimations()
       frame.setAttribute('data-drawer-animating', '')
-      if (close) {
-        closeMobileSider()
-      } else {
-        openMobileSider()
-      }
-      lastToggleAt.current = Date.now()
-      frame.style.removeProperty('--drawer-progress')
-      window.setTimeout(() => {
+
+      const from = Number.parseFloat(
+        frame.style.getPropertyValue('--drawer-progress') || (close ? '1' : '0')
+      )
+      const target = close ? 0 : 1
+      // 初速换算成「进度/秒」，并夹住上限，避免甩得太猛导致过度回弹
+      const rawVelocity = lastVelocity.current / Math.max(1, frame.offsetWidth)
+      const velocity = Math.max(-14, Math.min(14, rawVelocity))
+
+      const finish = () => {
+        if (close) {
+          closeMobileSider()
+        } else {
+          openMobileSider()
+        }
+        lastToggleAt.current = Date.now()
+        frame.style.removeProperty('--drawer-progress')
+        frame.style.removeProperty('--card-progress')
         frame.removeAttribute('data-drawer-animating')
         frame.style.removeProperty('will-change')
-      }, 280)
-      useSwipeDebug.setState((state) => ({
-        toggle: state.toggle + 1,
-        last: `${close ? 'close' : 'open'} @${Date.now() % 1000}`,
-      }))
+        animations.current = []
+        useSwipeDebug.setState((state) => ({ toggle: state.toggle + 1, last: close ? 'close' : 'open' }))
+      }
+
+      const drawerAnim = springTo(from, target, DRAWER_SPRING, {
+        velocity,
+        onUpdate: (value) => frame.style.setProperty('--drawer-progress', String(value)),
+      })
+      const cardAnim = springTo(from, target, CARD_SPRING, {
+        velocity: velocity * 0.8,
+        onUpdate: (value) => frame.style.setProperty('--card-progress', String(value)),
+        onComplete: finish,
+      })
+      animations.current = [drawerAnim, cardAnim]
     }
 
     const begin = (x: number, y: number) => {
+      stopAnimations()
       const opened = useMobileSider.getState().open
       drag.current = {
         x,
@@ -177,6 +211,7 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
     }
 
     const restore = () => {
+      stopAnimations()
       const state = drag.current
       drag.current = null
       if (!state || !state.axis) {
@@ -184,6 +219,8 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
       release()
       frame.style.removeProperty('--drawer-progress')
+      frame.style.removeProperty('--card-progress')
+      frame.removeAttribute('data-drawer-animating')
       useSwipeDebug.setState({ last: 'cancel → 还原' })
     }
 
@@ -293,7 +330,7 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
     () =>
       useMobileSider.subscribe((state) => {
         const frame = frameRef.current
-        if (!frame || frame.hasAttribute('data-drawer-dragging')) {
+        if (!frame || frame.hasAttribute('data-drawer-dragging') || frame.hasAttribute('data-drawer-animating')) {
           return
         }
         if (state.open) {
