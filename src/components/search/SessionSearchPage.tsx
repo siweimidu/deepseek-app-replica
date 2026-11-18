@@ -23,7 +23,7 @@ type Hit = {
 }
 
 const SNIPPET_LIMIT = 46
-const SCAN_LIMIT = 60
+const BATCH = 8
 
 type MessageLike = { role: string } & Record<string, unknown>
 
@@ -65,6 +65,7 @@ export const SessionSearchPage = () => {
   const [hits, setHits] = useState<Hit[]>([])
   const [searching, setSearching] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const textCache = useRef(new Map<string, string>())
 
   useEffect(() => {
     if (!open) {
@@ -77,7 +78,7 @@ export const SessionSearchPage = () => {
   }, [open])
 
   const term = query.trim().toLocaleLowerCase()
-  const recent = useMemo(() => sessions.slice(0, SCAN_LIMIT), [sessions])
+  const all = useMemo(() => sessions, [sessions])
 
   useEffect(() => {
     if (!term) {
@@ -88,43 +89,49 @@ export const SessionSearchPage = () => {
     let active = true
     setSearching(true)
     const timer = window.setTimeout(async () => {
+      // 所有会话都要扫到；按批并行，命中一条就立刻显示一条
       const found: Hit[] = []
-      const loaded = await Promise.all(
-        recent.map(
-          async (summary) =>
-            useChatStore.getState().sessionCache[summary.id] ??
-            (await loadSession(summary.id).catch(() => undefined))
+      for (let offset = 0; offset < all.length; offset += BATCH) {
+        const batch = all.slice(offset, offset + BATCH)
+        const loaded = await Promise.all(
+          batch.map(
+            async (summary) =>
+              useChatStore.getState().sessionCache[summary.id] ??
+              (await loadSession(summary.id).catch(() => undefined))
+          )
         )
-      )
-      for (const [row, summary] of recent.entries()) {
         if (!active) {
           return
         }
-        const titleHit = summary.title.toLocaleLowerCase().includes(term)
-        const session = loaded[row]
-        const messageHit = session?.messages.find((message) =>
-          messageText(message).toLocaleLowerCase().includes(term)
-        )
-        if (!titleHit && !messageHit) {
-          continue
+        for (const [row, summary] of batch.entries()) {
+          const cached = textCache.current.get(summary.id)
+          const session = loaded[row]
+          const haystack =
+            cached ??
+            (session ? session.messages.map((message) => messageText(message)).join('\n') : '')
+          if (!cached && session) {
+            textCache.current.set(summary.id, haystack)
+          }
+          const titleHit = summary.title.toLocaleLowerCase().includes(term)
+          const bodyHit = haystack.toLocaleLowerCase().includes(term)
+          if (!titleHit && !bodyHit) {
+            continue
+          }
+          const at = haystack.toLocaleLowerCase().indexOf(term)
+          const snippet =
+            at >= 0
+              ? `${at > 12 ? '…' : ''}${haystack.slice(Math.max(0, at - 12), at + SNIPPET_LIMIT)}`
+              : summary.title
+          found.push({
+            id: summary.id,
+            title: summary.title,
+            snippet: snippet.replace(/\s+/g, ' ').trim(),
+            updatedAt: summary.updatedAt,
+          })
         }
-        const text = messageHit ? messageText(messageHit) : ''
-        const at = text.toLocaleLowerCase().indexOf(term)
-        const snippet = at >= 0
-          ? `${at > 12 ? '…' : ''}${text.slice(Math.max(0, at - 12), at + SNIPPET_LIMIT)}`
-          : summary.title
-        found.push({
-          id: summary.id,
-          title: summary.title,
-          snippet: snippet.replace(/\s+/g, ' ').trim(),
-          updatedAt: summary.updatedAt,
-        })
-        if (found.length >= 30) {
-          break
-        }
+        setHits([...found])
       }
       if (active) {
-        setHits(found)
         setSearching(false)
       }
     }, 120)
@@ -132,7 +139,7 @@ export const SessionSearchPage = () => {
       active = false
       window.clearTimeout(timer)
     }
-  }, [term, recent])
+  }, [term, all])
 
   if (!open) {
     return null
