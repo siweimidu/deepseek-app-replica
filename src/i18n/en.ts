@@ -200,6 +200,7 @@ export const en = {
   sessionDetailSourceLocal: 'Created on this device',
   sessionDetailCreatedAt: 'Created',
   sessionDetailUpdatedAt: 'Last updated',
+  sessionDetailCacheHit: 'Cache hit rate',
   sessionDetailMessages: 'Messages',
   sessionDetailContext: 'Context',
   sessionDetailId: 'Session ID',

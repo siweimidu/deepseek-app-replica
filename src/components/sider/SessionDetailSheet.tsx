@@ -58,6 +58,24 @@ export const SessionDetailSheet = ({
   const imported = session.id.startsWith('session-')
   // 挂载后下一帧再切换，保证 transition 从收起状态开始播。
   const [shown, setShown] = useState(false)
+  // 缓存命中率：命中的缓存 token 占本轮输入侧总量的比例（只在详情里展示）
+  const cache = (() => {
+    const usage = loaded?.contextUsage
+    if (!usage) {
+      return null
+    }
+    const total = usage.inputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
+    if (total <= 0) {
+      return null
+    }
+    const rate = Math.round((usage.cacheReadTokens / total) * 100)
+    const kilo = (value: number) =>
+      value >= 1000 ? `${Math.round(value / 100) / 10}K` : String(value)
+    return {
+      rate,
+      detail: `命中 ${kilo(usage.cacheReadTokens)} / 输入 ${kilo(total)}`,
+    }
+  })()
   const sheet = useRef<HTMLElement>(null)
   // 预测性返回：手势期间弹层跟着手指往下退
   usePredictiveBack(sheet, onClose)
@@ -104,6 +122,13 @@ export const SessionDetailSheet = ({
             label={t('sessionDetailMessages')}
             value={loaded ? loaded.messages.length : '—'}
           />
+          {cache ? (
+            <Row
+              icon={<IconCopyOutline20 />}
+              label={t('sessionDetailCacheHit')}
+              value={`${cache.rate}% · ${cache.detail}`}
+            />
+          ) : null}
           {loaded?.contextUsage ? (
             <Row
               icon={<IconInfoOutline20 />}
@@ -112,16 +137,6 @@ export const SessionDetailSheet = ({
                 `${Math.round(loaded.contextUsage.inputTokens / 100) / 10}K / ${
                   MODEL_WINDOWS['deepseek-flash'] / 1000
                 }K`,
-                loaded.contextUsage.cacheReadTokens
-                  ? `${Math.round(
-                      (loaded.contextUsage.cacheReadTokens /
-                        Math.max(
-                          1,
-                          loaded.contextUsage.cacheReadTokens + loaded.contextUsage.inputTokens
-                        )) *
-                        100
-                    )}% 命中缓存`
-                  : '',
                 loaded.anchor ? '已存档开头' : '',
               ]
                 .filter(Boolean)

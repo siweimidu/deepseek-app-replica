@@ -193,6 +193,7 @@ export const zh = {
   sessionDetailSourceLocal: '本机创建',
   sessionDetailCreatedAt: '创建时间',
   sessionDetailUpdatedAt: '最后更新',
+  sessionDetailCacheHit: '缓存命中率',
   sessionDetailMessages: '消息数',
   sessionDetailContext: '上下文',
   sessionDetailId: '会话 ID',
