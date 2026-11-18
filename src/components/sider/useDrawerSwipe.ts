@@ -4,19 +4,17 @@ import { android } from '../../app/android.js'
 import { closeMobileSider, openMobileSider, useMobileSider } from './mobileSiderState.js'
 
 /**
- * 侧边栏横滑
+ * 侧边栏横滑（方向无关版）
  *
- * 规则：对话页向「左」滑 → 打开侧边栏；侧边栏向「右」滑 → 回到对话。
+ * 行为：聊天页上横滑（左或右）→ 打开侧边栏；侧边栏上横滑（左或右）→ 回到对话。
+ * 不再锁定方向 —— 之前按单一方向硬编码，与用户实际手势相反时表现为"完全不动"。
  *
- * 交互模型按「按下记坑，抬手判定」：
- * - pointerdown：只记录起点，不做任何可见变化（避免"刚按下页面就跳走"）
- * - pointermove：判定方向后才接管手势；接管即 preventDefault（touch, passive:false），
- *   相当于告诉浏览器"这个手势我处理"，它就不会判成滚动、也不会发 touchcancel
- * - pointerup：按距离与速度决定去向；**即时**还原/落位，不等定时器
- * - pointercancel：立刻回到起始状态，绝不停在半途
+ * 通道（三条，任一存活即可切换）：
+ * 1. 原生：MainActivity.dispatchTouchEvent 判定横滑 → window.__dshSwipe('left'|'right')
+ * 2. JS touch 监听（passive:false + preventDefault 抢手势）
+ * 3. JS pointer 监听
  *
- * 动画：位移只走 transform（合成器廉价层）；will-change 只在手势与过渡期间挂着。
- * 状态切换只调 store，不依赖任何 DOM 查询——拿不到元素也不会让开合失效。
+ * 手感：跟手位移，松手按距离/速度决定，320ms 弹簧曲线收尾（技能包 spring-default）。
  */
 
 const SLOP = 6
@@ -68,7 +66,6 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       return drawer?.offsetWidth || window.innerWidth
     }
 
-    /** 接管手势：挂上临时 will-change，过渡设为 0（跟手） */
     const claim = () => {
       frame.setAttribute('data-drawer-dragging', '')
       frame.style.setProperty('will-change', 'transform')
@@ -82,7 +79,6 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       frame.style.setProperty('--drawer-progress', String(clamp01(progress)))
     }
 
-    /** 即时收尾：先提交状态，同一帧撤掉内联值，交给 CSS 弹簧曲线走完 */
     const settle = (close: boolean) => {
       release()
       if (close) {
@@ -91,7 +87,6 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
         openMobileSider()
       }
       lastToggleAt.current = Date.now()
-      // 同一帧内撤内联值：计算值从当前位移变成目标值，过渡立刻从当前位置开始
       frame.style.removeProperty('--drawer-progress')
       window.setTimeout(() => frame.style.removeProperty('will-change'), 420)
       useSwipeDebug.setState((state) => ({
@@ -134,15 +129,8 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
           useSwipeDebug.setState({ last: 'vertical → 放行' })
           return false
         }
-        if (!state.opened && dx < 0) {
-          state.axis = 'opening'
-        } else if (state.opened && dx > 0) {
-          state.axis = 'closing'
-        } else {
-          drag.current = null
-          useSwipeDebug.setState({ last: '方向不符 → 放行' })
-          return false
-        }
+        // 方向无关：横向确立即接管，往当前状态的反向走
+        state.axis = state.opened ? 'closing' : 'opening'
         claim()
       }
 
@@ -152,7 +140,8 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
       state.lastX = x
       state.lastAt = now
-      state.progress = state.axis === 'opening' ? -dx / state.width : 1 - dx / state.width
+      state.progress =
+        state.axis === 'opening' ? Math.abs(dx) / state.width : 1 - Math.abs(dx) / state.width
       paint(state.progress)
       useSwipeDebug.setState((debug) => ({
         move: debug.move + 1,
@@ -176,16 +165,12 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       const flick =
         performance.now() - state.lastAt < FLICK_WINDOW_MS &&
         Math.abs(state.velocity) > FLICK_VELOCITY
-      if (state.axis === 'opening') {
-        const open = flick ? state.velocity < 0 : Math.abs(dx) >= DISTANCE_PX
-        settle(!open)
-        return
-      }
-      const close = flick ? state.velocity > 0 : Math.abs(dx) >= DISTANCE_PX
-      settle(close)
+      // 往反方向切换；不足阈值则回到原状态
+      const toggle = flick || Math.abs(dx) >= DISTANCE_PX
+      // settle(close)：关闭时(!opened)要开 ⇒ settle(false)；打开时要关 ⇒ settle(true)
+      settle(toggle ? state.opened : !state.opened)
     }
 
-    /** 取消：立刻回到起点，不留半途 */
     const restore = () => {
       const state = drag.current
       drag.current = null
@@ -196,6 +181,17 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       frame.style.removeProperty('--drawer-progress')
       useSwipeDebug.setState({ last: 'cancel → 还原' })
     }
+
+    // ---- 通道 1：原生派发（MainActivity 判定横滑后调用，方向无关）----
+    const nativeBridge = (direction: string) => {
+      if (Date.now() - lastToggleAt.current < COOLDOWN_MS) {
+        return
+      }
+      const opened = useMobileSider.getState().open
+      settle(opened)
+      useSwipeDebug.setState({ last: `native ${direction}` })
+    }
+    ;(window as unknown as Record<string, unknown>).__dshSwipe = nativeBridge
 
     const onTouchStart = (event: TouchEvent) => {
       if (event.touches.length !== 1) {
@@ -262,21 +258,6 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
     }
 
-    // 原生层判定到横滑后会调这个：原生能看到所有触摸，WebView 抢不走
-    const nativeBridge = (direction: string) => {
-      const opened = useMobileSider.getState().open
-      if (direction === 'left' && !opened) {
-        openMobileSider()
-      } else if (direction === 'right' && opened) {
-        closeMobileSider()
-      }
-      useSwipeDebug.setState((state) => ({
-        toggle: state.toggle + 1,
-        last: `native ${direction}`,
-      }))
-    }
-    ;(window as unknown as Record<string, unknown>).__dshSwipe = nativeBridge
-
     frame.addEventListener('touchstart', onTouchStart, { passive: true })
     frame.addEventListener('touchmove', onTouchMove, { passive: false })
     frame.addEventListener('touchend', onTouchEnd, { passive: true })
@@ -287,6 +268,7 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
     frame.addEventListener('pointercancel', restore, { passive: true })
 
     return () => {
+      delete (window as unknown as Record<string, unknown>).__dshSwipe
       frame.removeEventListener('touchstart', onTouchStart)
       frame.removeEventListener('touchmove', onTouchMove)
       frame.removeEventListener('touchend', onTouchEnd)
