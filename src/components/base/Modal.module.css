@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: center;
   background-color: rgba(0, 0, 0, var(--overlay-opacity));
-  backdrop-filter: blur(2px);
+  /* 弹层不做实时背景模糊：Android WebView 上每帧回读，删除这类操作会像卡死 */
 
   [data-ds-dark-theme] & {
     --overlay-opacity: 0.6;

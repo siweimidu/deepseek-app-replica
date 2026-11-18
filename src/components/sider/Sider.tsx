@@ -435,11 +435,11 @@ export const MobileSider = () => {
           const dx = event.clientX - state.x
           const dy = event.clientY - state.y
           if (!state.horizontal) {
-            if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+            if (Math.abs(dx) < 6 && Math.abs(dy) < 6) {
               return
             }
             // 纵向优先交给列表滚动，只有明显横向才接管
-            if (Math.abs(dx) <= Math.abs(dy) * 1.2) {
+            if (Math.abs(dx) <= Math.abs(dy) * 1.1) {
               drag.current = null
               return
             }
@@ -469,7 +469,7 @@ export const MobileSider = () => {
             // 同上，指针已失效时无需释放
           }
           const offset = Number.parseFloat(element?.style.getPropertyValue('--drawer-drag') ?? '0') || 0
-          settle(offset < -state.width * 0.3)
+          settle(offset < -state.width * 0.24)
           window.setTimeout(() => {
             dragged.current = false
           }, 140)

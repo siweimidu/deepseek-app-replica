@@ -11,11 +11,11 @@ import { showToast } from '../base/toastState.js'
 export type CallPhase = 'listening' | 'thinking' | 'speaking' | 'muted'
 
 /** 说完后安静这么久就算一轮结束 */
-const SILENCE_MS = 1300
+const SILENCE_MS = 900
 /** 至少说了这么久才允许判定结束，避免一开口就掐断 */
-const MIN_SPEECH_MS = 320
+const MIN_SPEECH_MS = 260
 /** 音量阈值，与录音器的归一化电平对齐 */
-const SPEECH_LEVEL = 0.06
+const SPEECH_LEVEL = 0.045
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

@@ -13,7 +13,8 @@
   padding-top: var(--android-status-inset, 0px);
   color: var(--dsw-alias-label-primary);
   background: var(--settings-bg);
-  animation: page-enter var(--motion-reveal);
+  will-change: transform, opacity;
+  animation: page-enter var(--motion-drawer);
 }
 
 [data-ds-dark-theme] .page {
@@ -450,7 +451,8 @@ a.row:active,
 
 @keyframes page-enter {
   from {
-    transform: translateX(100%);
+    opacity: 0;
+    transform: translateX(24%);
   }
 }
 

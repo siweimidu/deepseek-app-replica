@@ -61,6 +61,9 @@
   transform: translateX(0);
   border-radius: 0;
   transition: transform var(--drawer-transition);
+}
+
+[data-android] .frame[data-drawer-open='true'] .main {
   will-change: transform;
 }
 
@@ -125,17 +128,9 @@
 
 /* 与官方一致：深色下对话区纯黑，抽屉是 #1b1b1c；浅色下两边都白，靠卡片阴影分界 */
 [data-android] .main {
-  background: #ffffff;
+  background: var(--dsw-alias-bg-base);
 }
 
-/* 深色：对话卡片比抽屉亮一档（取色器实测 #1d1d1d） */
-[data-android] body[data-ds-dark-theme] .main {
-  background: #1d1d1d;
-}
-
-html[data-android]:not([data-ds-dark-theme]) .main {
-  background: #fff;
-}
 
 /* 卡片边缘一圈极细的亮线，深色下也能看清圆角 */
 [data-android] .frame[data-drawer-open='true'] .main {

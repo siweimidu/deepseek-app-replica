@@ -262,7 +262,7 @@
   width: var(--drawer-edge);
   padding-top: var(--android-status-inset, 0px);
   /* 抽屉底色明显比对话区亮一档，右边界给一条看得见的亮线 */
-  --drawer-surface: #ffffff;
+  --drawer-surface: var(--dsw-specific-sidebar-fill);
   background: var(--drawer-surface);
   border-right: 1px solid rgb(255 255 255 / 8%);
   /* 纵向滚动留给列表，横向留给「左滑关闭」 */
@@ -499,13 +499,23 @@
 }
 
 /* 浅色下抽屉是纯白，边界由对话卡片的阴影给出 */
-/* 深色：抽屉比对话卡片更黑（取色器实测 #0f0f0f） */
+/* 深色下边界更分明一点 */
 [data-android] body[data-ds-dark-theme] .drawer {
-  --drawer-surface: #0f0f0f;
+  --drawer-surface: var(--dsw-specific-sidebar-fill);
   border-right-color: rgb(255 255 255 / 8%);
 }
 
 html[data-android]:not([data-ds-dark-theme]) .drawer {
   border-right-color: rgb(0 0 0 / 5%);
   box-shadow: none;
+}
+
+/* 底部账号行的三点按钮往左收一点，别贴着屏幕边 */
+[data-android] .mobile .settings {
+  padding-right: 10px;
+}
+
+[data-android] .mobile .settings > svg {
+  margin-right: 4px;
+  flex-shrink: 0;
 }

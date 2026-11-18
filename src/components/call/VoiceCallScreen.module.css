@@ -124,29 +124,22 @@
   transform: scale(calc(1 + var(--level) * 0.2));
   transition:
     transform var(--spring-pop),
-    width var(--motion-sheet),
-    height var(--motion-sheet),
-    opacity 320ms ease-out,
-    filter 320ms ease-out;
+    opacity 240ms ease-out;
   animation: orb-idle 5.2s ease-in-out infinite;
 }
 
-/* 缓慢旋转的内层云雾，让球体静止时也在流动 */
+/* 静态云雾层：原来带 blur + 旋转，逐帧重绘很贵，改成静止的柔光 */
 .orb > .orbSheen {
   position: absolute;
   inset: 4%;
   z-index: 0;
   border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    rgb(255 255 255 / 0%),
-    rgb(255 255 255 / 22%),
-    rgb(180 200 230 / 0%),
-    rgb(255 255 255 / 16%),
-    rgb(255 255 255 / 0%)
+  background: radial-gradient(
+    60% 55% at 38% 32%,
+    rgb(255 255 255 / 26%),
+    rgb(255 255 255 / 8%) 46%,
+    transparent 70%
   );
-  filter: blur(12px);
-  animation: orb-sheen 11s linear infinite;
   pointer-events: none;
 }
 
@@ -259,12 +252,6 @@
   }
 }
 
-@keyframes orb-sheen {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .status {
   display: flex;
   align-items: center;
@@ -338,8 +325,7 @@
       rgb(255 255 255 / 4%) 100%
     ),
     rgb(20 24 32 / 34%);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* 不用 backdrop-filter：Android WebView 每帧要回读背景，滑动时明显掉帧 */
   color: #f3f5f9;
   font-size: 21px;
   cursor: pointer;

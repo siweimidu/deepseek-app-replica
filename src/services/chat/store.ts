@@ -377,10 +377,21 @@ const waitForIdle = (sessionId?: string) =>
       resolve()
       return
     }
+    let settled = false
+    const finish = () => {
+      if (settled) {
+        return
+      }
+      settled = true
+      unsubscribe()
+      window.clearTimeout(timer)
+      resolve()
+    }
+    // 收尾可能因为异常一直不回来；这里必须兜底，否则删除会永远挂住
+    const timer = window.setTimeout(finish, 2500)
     const unsubscribe = useChatStore.subscribe((state) => {
       if (isIdle(state)) {
-        unsubscribe()
-        resolve()
+        finish()
       }
     })
   })

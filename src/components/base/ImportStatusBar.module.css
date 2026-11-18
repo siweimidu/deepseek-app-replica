@@ -11,8 +11,7 @@
   height: 34px;
   padding: 0 14px;
   border: 0;
-  background: color-mix(in srgb, var(--dsw-alias-bg-layer-3) 92%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--dsw-alias-bg-layer-3);
   color: var(--dsw-alias-label-primary);
   font: inherit;
   font-size: 12.5px;

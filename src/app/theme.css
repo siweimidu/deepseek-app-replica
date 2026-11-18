@@ -251,3 +251,14 @@ body {
 
   --dsw-font-xs-13: 13px/20px var(--dsw-font-family);
 }
+
+/* 侧边栏与对话卡片的表面色：跟着主题走，避免深浅混搭 */
+body {
+  --ds-drawer-surface: #ffffff;
+  --ds-card-surface: #ffffff;
+}
+
+body[data-ds-dark-theme] {
+  --ds-drawer-surface: #0f0f0f;
+  --ds-card-surface: #1d1d1d;
+}
