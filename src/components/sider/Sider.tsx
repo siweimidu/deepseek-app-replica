@@ -360,6 +360,8 @@ export const MobileSider = () => {
   const drawer = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; width: number; horizontal: boolean } | null>(null)
   const dragged = useRef(false)
+  // 兜底：不依赖 frame 手势（键盘属性等会整体禁用它），只要往左带过就关闭
+  const closeSwipe = useRef<{ x: number; y: number; armed: boolean } | null>(null)
   // 关闭后保留一小会儿让滑出动画走完，然后彻底卸载：几百行会话不再常驻
   const [rendered, setRendered] = useState(open)
   useEffect(() => {
@@ -433,6 +435,7 @@ export const MobileSider = () => {
           if (!android || !open) {
             return
           }
+          closeSwipe.current = { x: event.clientX, y: event.clientY, armed: true }
           // 每次按下都复位：上一次拖拽若被系统打断，标志会一直为真，导致后续点击全被吞掉
           dragged.current = false
           drag.current = {
@@ -471,6 +474,18 @@ export const MobileSider = () => {
           setProgress(1 + Math.min(0, Math.max(-state.width, dx)) / state.width)
         }}
         onPointerUp={(event) => {
+          const swipe = closeSwipe.current
+          closeSwipe.current = null
+          if (swipe?.armed) {
+            const dx = event.clientX - swipe.x
+            const dy = event.clientY - swipe.y
+            // 往左 20px 且横向为主：直接收起，不依赖进度与手势模块
+            if (dx < -20 && Math.abs(dx) > Math.abs(dy)) {
+              closeMobileSider()
+              drag.current = null
+              return
+            }
+          }
           const state = drag.current
           drag.current = null
           if (!state?.horizontal) {
@@ -503,6 +518,7 @@ export const MobileSider = () => {
           }
           drag.current = null
           dragged.current = false
+          closeSwipe.current = null
         }}
         onClickCapture={(event) => {
           // 刚拖动过就不要把这次手势当成点击

@@ -60,3 +60,13 @@
   width: 22px;
   height: 22px;
 }
+
+/* 三个图标按字形底部对齐（听筒字形本身偏高） */
+[data-android] .call svg {
+  transform: translateY(0.7px);
+}
+
+[data-android] .sound svg,
+[data-android] .newChat svg {
+  transform: translateY(0);
+}

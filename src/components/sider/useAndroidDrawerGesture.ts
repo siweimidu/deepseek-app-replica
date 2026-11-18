@@ -27,7 +27,8 @@ export const useAndroidDrawerGesture = () => {
       !android ||
       !event.isPrimary ||
       event.pointerType === 'mouse' ||
-      document.documentElement.hasAttribute('data-keyboard') ||
+      (document.documentElement.hasAttribute('data-keyboard') &&
+        !useMobileSider.getState().open) ||
       (event.target instanceof Element &&
         event.target.closest('input, textarea, [data-drawer-gesture-ignore]'))
     ) {
