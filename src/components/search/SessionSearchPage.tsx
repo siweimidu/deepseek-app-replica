@@ -17,7 +17,10 @@ export const openSessionSearch = () => useSearchPage.setState({ open: true })
 export const closeSessionSearch = () => useSearchPage.setState({ open: false })
 
 type Hit = {
+  /** 列表 key（会话 id + 消息序号），不能拿来查会话 */
   id: string
+  /** 真正要跳转的会话 id */
+  sessionId: string
   title: string
   snippet: string
   updatedAt: number
@@ -137,6 +140,7 @@ export const SessionSearchPage = () => {
             const snippet = `${at > 14 ? '…' : ''}${text.slice(Math.max(0, at - 14), at + SNIPPET_LIMIT)}`
             found.push({
               id: `${summary.id}-${index}`,
+              sessionId: summary.id,
               title: summary.title,
               snippet: snippet.replace(/\s+/g, ' ').trim(),
               updatedAt: summary.updatedAt,
@@ -146,6 +150,7 @@ export const SessionSearchPage = () => {
           if (!texts.some((text) => text.toLocaleLowerCase().includes(term)) && titleHit) {
             found.push({
               id: `${summary.id}-title`,
+              sessionId: summary.id,
               title: summary.title,
               snippet: summary.title,
               updatedAt: summary.updatedAt,
@@ -169,7 +174,8 @@ export const SessionSearchPage = () => {
   }
 
   const pick = (hit: Hit) => {
-    void selectSession(hit.id)
+    // 用真实会话 id 跳转；id 是列表 key（会话 id + 消息序号），不能直接当会话 id
+    void selectSession(hit.sessionId)
     closeSessionSearch()
   }
 

@@ -14,7 +14,7 @@ android {
         applicationId = 'com.deep.sleep'
         minSdk = 30
         targetSdk = 36
-        versionCode = 45
+        versionCode = 46
         versionName = '0.1.0'
     }
 
