@@ -265,7 +265,6 @@
   --drawer-surface: #ffffff;
   background: var(--drawer-surface);
   border-right: 1px solid rgb(255 255 255 / 8%);
-  box-shadow: 10px 0 34px rgb(0 0 0 / 65%);
   /* 纵向滚动留给列表，横向留给「左滑关闭」 */
   touch-action: pan-y;
   transform: translateX(
@@ -504,7 +503,6 @@
 [data-android] body[data-ds-dark-theme] .drawer {
   --drawer-surface: #0f0f0f;
   border-right-color: rgb(255 255 255 / 8%);
-  box-shadow: 10px 0 34px rgb(0 0 0 / 65%);
 }
 
 html[data-android]:not([data-ds-dark-theme]) .drawer {
