@@ -108,6 +108,9 @@ public final class SourceBrowserActivity extends Activity {
             | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
         getWindow().getInsetsController().setSystemBarsAppearance(dark ? 0 : flags, flags);
         getWindow().setNavigationBarContrastEnforced(false);
+        // 状态栏跟随内置浏览器的工具栏底色，避免出现一条灰带
+        getWindow().setStatusBarColor(background);
+        getWindow().setNavigationBarColor(background);
         if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::goBack);

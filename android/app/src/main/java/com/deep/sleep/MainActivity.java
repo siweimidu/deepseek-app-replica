@@ -192,6 +192,9 @@ public final class MainActivity extends Activity {
             | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
         getWindow().getInsetsController().setSystemBarsAppearance(dark ? 0 : flags, flags);
         getWindow().setNavigationBarContrastEnforced(false);
+        // 状态栏/导航栏保持透明，颜色始终由页面本身决定，深浅色切换时不会留下灰边
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
         int color = Color.parseColor(dark ? "#191919" : "#FFFFFF");
         frame.setBackgroundColor(color);
         webView.setBackgroundColor(color);
