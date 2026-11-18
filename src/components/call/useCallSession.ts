@@ -11,13 +11,19 @@ import { showToast } from '../base/toastState.js'
 export type CallPhase = 'listening' | 'thinking' | 'speaking' | 'muted'
 
 /** 说完后安静这么久就算一轮结束 */
-const SILENCE_MS = 900
+const SILENCE_MS = 620
 /** 至少说了这么久才允许判定结束，避免一开口就掐断 */
 const MIN_SPEECH_MS = 260
 /** 音量阈值，与录音器的归一化电平对齐 */
 const SPEECH_LEVEL = 0.045
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** 取回第一个完整句子：到句末标点为止，足够长才用，避免读出半句 */
+const takeSentence = (text: string): string => {
+  const match = /[^。！？!?…\n]{6,}[。！？!?…]/.exec(text)
+  return match ? match[0].trim() : ''
+}
 
 /**
  * 通话主循环：录一轮（静音判停）→ 转写 → 发消息 → 等回复 → 朗读 → 继续录。
@@ -135,19 +141,66 @@ export const useCallSession = (active: boolean) => {
           continue
         }
 
-        // 等这轮回复结束（流式 token 停止、没有挂起的请求）
-        let reply: { id: string | null; text: string } = { id: null, text: '' }
-        for (let step = 0; step < 1800; step++) {
+        // 边生成边读：第一句完整了就立刻开口，不用等整段回复
+        const replyText = () => {
           const state = useChatStore.getState()
           const id = sessionId ?? state.activeId
-          const running = id ? Boolean(state.streaming[id]) : Object.keys(state.streaming).length > 0
-          if (!running && step > 4) {
-            const session = id ? state.sessionCache[id] : null
-            const last = session?.messages.filter((item) => item.role === 'assistant').at(-1)
-            reply = {
-              id: last?.id ?? null,
-              text: last ? (buildReplyView(last, false).answer?.text ?? '').trim() : '',
-            }
+          const session = id ? state.sessionCache[id] : null
+          const last = session?.messages.filter((item) => item.role === 'assistant').at(-1)
+          return {
+            id: last?.id ?? null,
+            text: last ? (buildReplyView(last, false).answer?.text ?? '').trim() : '',
+            streaming: id ? Boolean(state.streaming[id]) : Object.keys(state.streaming).length > 0,
+          }
+        }
+
+        const speakText = async (text: string, id: string | null) => {
+          playback.current?.abort()
+          playback.current = new AbortController()
+          setPhase('speaking')
+          await readAloudText(id ?? `call-${Date.now()}`, text, playback.current.signal, () =>
+            showToast({ key: 'ttsFailed', type: 'error' })
+          )
+          playback.current = null
+        }
+
+        // 1) 等到第一句
+        let spoken = ''
+        let replyId: string | null = null
+        for (let step = 0; step < 200; step++) {
+          const snapshot = replyText()
+          replyId = snapshot.id ?? replyId
+          const sentence = takeSentence(snapshot.text)
+          if (sentence) {
+            spoken = sentence
+            break
+          }
+          if (!snapshot.streaming && snapshot.text) {
+            spoken = snapshot.text
+            break
+          }
+          await wait(90)
+          if (ticket !== loop.current) {
+            return
+          }
+        }
+        if (ticket !== loop.current) {
+          return
+        }
+        if (spoken) {
+          await speakText(spoken, replyId)
+        }
+        if (ticket !== loop.current) {
+          return
+        }
+
+        // 2) 等这一轮结束，把没读的部分补上
+        let rest = ''
+        for (let step = 0; step < 1800; step++) {
+          const snapshot = replyText()
+          replyId = snapshot.id ?? replyId
+          if (!snapshot.streaming && step > 4) {
+            rest = snapshot.text.slice(spoken.length).trim()
             break
           }
           await wait(120)
@@ -155,19 +208,8 @@ export const useCallSession = (active: boolean) => {
         if (ticket !== loop.current) {
           return
         }
-
-        if (reply.text) {
-          setPhase('speaking')
-          // 新一轮朗读前，先停掉可能还在播的上一段
-          playback.current?.abort()
-          playback.current = new AbortController()
-          await readAloudText(
-            reply.id ?? `call-${Date.now()}`,
-            reply.text,
-            playback.current.signal,
-            () => showToast({ key: 'ttsFailed', type: 'error' })
-          )
-          playback.current = null
+        if (rest) {
+          await speakText(rest, replyId)
         }
         if (ticket !== loop.current) {
           return
@@ -200,5 +242,13 @@ export const useCallSession = (active: boolean) => {
     setRound((value) => value + 1)
   }, [phase, stopAll])
 
-  return { phase, level, seconds, toggleMute, endCall: stopAll }
+  /** 打断当前朗读，立刻回到收音 */
+  const interrupt = useCallback(() => {
+    playback.current?.abort()
+    playback.current = null
+    setPhase('listening')
+    setRound((value) => value + 1)
+  }, [])
+
+  return { phase, level, seconds, toggleMute, interrupt, endCall: stopAll }
 }

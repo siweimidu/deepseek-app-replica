@@ -37,6 +37,7 @@ export const zh = {
   androidUnpinnedChats: '已取消置顶 {count} 个对话',
   callStart: '语音通话',
   callInProgress: '通话中 {time}',
+  callInterrupt: '说话或轻触打断',
   callListening: '正在聆听',
   callThinking: '正在思考',
   callSpeaking: '正在回答',

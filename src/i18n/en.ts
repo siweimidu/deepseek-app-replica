@@ -39,6 +39,7 @@ export const en = {
   welcomeMessageChat250808: 'How can I help you?',
   callStart: 'Voice call',
   callInProgress: 'In call {time}',
+  callInterrupt: 'Speak or tap to interrupt',
   callListening: 'Listening',
   callThinking: 'Thinking',
   callSpeaking: 'Answering',

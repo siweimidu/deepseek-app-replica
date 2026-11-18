@@ -132,7 +132,7 @@ export const VoiceCallScreen = () => {
   })
   const [sheet, setSheet] = useState(false)
   const [mode, setMode] = useState<'voice' | 'text'>('voice')
-  const { phase, level, seconds, toggleMute, endCall } = useCallSession(open)
+  const { phase, level, seconds, toggleMute, interrupt, endCall } = useCallSession(open)
   const page = useRef<HTMLDivElement>(null)
   usePredictiveBack(page, closeVoiceCall, open)
 
@@ -193,6 +193,13 @@ export const VoiceCallScreen = () => {
           </div>
         ) : null}
       </div>
+
+      {phase === 'speaking' ? (
+        <button type="button" className={styles.interrupt} onClick={interrupt}>
+          <span className={styles.interruptMark} aria-hidden="true" />
+          {t('callInterrupt')}
+        </button>
+      ) : null}
 
       <div className={styles.status} aria-live="polite">
         {phase === 'listening' ? (

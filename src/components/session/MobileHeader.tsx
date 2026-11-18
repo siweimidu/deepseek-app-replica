@@ -33,6 +33,19 @@ export const MobileHeader = ({ title }: { title?: string }) => {
             <IconButton
               size="xl"
               tone="primary"
+              className={styles.call}
+              icon={<IconPhoneOutline20 />}
+              aria-label={t('callStart')}
+              onClick={() => {
+                stopReadAloud()
+                openVoiceCall()
+              }}
+            />
+          ) : null}
+          {android ? (
+            <IconButton
+              size="xl"
+              tone="primary"
               className={styles.sound}
               icon={<AndroidSound muted={!autoRead} />}
               aria-label={t('androidAutoRead')}
@@ -43,19 +56,6 @@ export const MobileHeader = ({ title }: { title?: string }) => {
                   stopReadAloud()
                 }
                 showToast({ key: autoRead ? 'androidAutoReadDisabled' : 'androidAutoReadEnabled' })
-              }}
-            />
-          ) : null}
-          {android ? (
-            <IconButton
-              size="xl"
-              tone="primary"
-              className={styles.call}
-              icon={<IconPhoneOutline20 />}
-              aria-label={t('callStart')}
-              onClick={() => {
-                stopReadAloud()
-                openVoiceCall()
               }}
             />
           ) : null}

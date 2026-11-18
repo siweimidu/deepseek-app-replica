@@ -689,3 +689,33 @@
     transform: scale(0.9);
   }
 }
+
+/* 朗读中的打断提示：官方是圆角胶囊 + 一个小方块图标 */
+.interrupt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: center;
+  margin: 0 auto 18px;
+  padding: 12px 22px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 7%);
+  color: rgb(242 243 245 / 82%);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform var(--motion-press), background-color 160ms ease-out;
+
+  &:active {
+    transform: scale(0.96);
+    background: rgb(255 255 255 / 13%);
+  }
+}
+
+.interruptMark {
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  background: rgb(242 243 245 / 72%);
+}
