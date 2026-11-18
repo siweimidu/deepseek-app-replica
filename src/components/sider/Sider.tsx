@@ -443,6 +443,8 @@ export const MobileSider = () => {
           if (!android || !open) {
             return
           }
+          // 每次按下都复位：上一次拖拽若被系统打断，标志会一直为真，导致后续点击全被吞掉
+          dragged.current = false
           drag.current = {
             x: event.clientX,
             y: event.clientY,
@@ -506,6 +508,7 @@ export const MobileSider = () => {
             settle(false)
           }
           drag.current = null
+          dragged.current = false
         }}
         onClickCapture={(event) => {
           // 刚拖动过就不要把这次手势当成点击

@@ -15,8 +15,9 @@
   cursor: pointer;
 
   &.active {
-    background-color: var(--dsw-specific-sidebar-nav-item-active-accent);
-    color: var(--dsw-alias-brand-primary-invert);
+    /* 官方选中行：深藏青底 + 蓝色文字（取色器实测 #283142 / #5f9dff） */
+    background-color: #e9efff;
+    color: #2f5bd6;
   }
 
   @media (hover: hover) {
@@ -150,4 +151,10 @@
     border-radius: 16px;
     font-size: 16px;
   }
+}
+
+/* 深色下选中行用官方的藏青底与蓝字 */
+[data-ds-dark-theme] .item.active {
+  background-color: #283142;
+  color: #5f9dff;
 }
