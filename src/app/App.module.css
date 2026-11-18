@@ -107,3 +107,9 @@
     height: var(--app-viewport-height, 100dvh);
   }
 }
+
+/* 深色主题：对话区纯黑，侧边栏是 #1b1b1c，打开抽屉时一眼能分出两边 */
+body[data-ds-dark-theme] [data-android] .main,
+body[data-ds-dark-theme] [data-android] .frame {
+  background: #000;
+}
