@@ -20,19 +20,19 @@
 
 .recent {
   display: flex;
-  gap: 8px;
-  padding: 24px 20px 0;
+  gap: 10px;
+  padding: 20px 20px 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 .recent button {
   position: relative;
-  flex: 0 0 80px;
-  height: 80px;
+  flex: 0 0 74px;
+  height: 74px;
   overflow: hidden;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 16px;
+  border: 0;
+  border-radius: 14px;
   padding: 0;
   background: var(--dsw-alias-bg-skeleton);
 
@@ -60,14 +60,13 @@
   span {
     position: absolute;
     z-index: 1;
-    top: 5px;
-    right: 5px;
-    width: 17px;
-    height: 17px;
-    border: 1.5px solid white;
+    top: 6px;
+    right: 6px;
+    width: 19px;
+    height: 19px;
+    border: 1.5px solid rgb(255 255 255 / 85%);
     border-radius: 50%;
-    background: rgb(0 0 0 / 32%);
-    box-shadow: 0 1px 5px rgb(0 0 0 / 25%);
+    background: rgb(0 0 0 / 22%);
 
     svg {
       display: block;
@@ -94,27 +93,27 @@
 .actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  padding: 20px 20px 32.8px;
+  gap: 10px;
+  padding: 18px 20px 28px;
 
   button {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 5px;
     width: 100%;
-    height: 84px;
+    height: 92px;
     border: 0;
-    border-radius: 18px;
-    background: color-mix(in srgb, currentColor 5%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, currentColor 6%, transparent);
     color: inherit;
     font: inherit;
     font-size: 15px;
 
     svg {
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
     }
 
     &:active {

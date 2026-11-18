@@ -1,4 +1,4 @@
-﻿/* 头像裁切页：独立整页，铺满屏幕，自带不透明底色（不依赖 token，深浅色都稳）。 */
+/* 头像裁切页：独立整页，铺满屏幕，自带不透明底色（不依赖 token，深浅色都稳）。 */
 .page {
   position: fixed;
   inset: 0;
@@ -27,7 +27,8 @@ body[data-ds-dark-theme] .page {
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
-  padding: calc(12px + env(safe-area-inset-top)) 14px 12px;
+  /* WebView 里 env(safe-area-inset-top) 为 0，用原生给的状态栏高度 */
+  padding: calc(var(--android-status-inset, 0px) + 10px) 14px 12px;
   border-bottom: 1px solid rgb(0 0 0 / 6%);
 }
 

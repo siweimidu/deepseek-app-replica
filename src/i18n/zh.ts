@@ -1,4 +1,4 @@
-﻿export const zh = {
+export const zh = {
   welcomeMessageChat250808: '今天有什么可以帮到你？',
   androidWelcome: '你好，有什么我能帮你的吗？',
   androidGreetingMorning: '早上好，我能帮什么忙吗？',
@@ -24,6 +24,8 @@
   androidPhotoExplain: '解释一下',
   androidSearchChats: '搜索对话内容...',
   androidNoChats: '暂无历史对话',
+  selectAll: '全选',
+  selectNone: '取消全选',
   androidSelectChats: '选择对话',
   androidSelectedChats: '已选择 {count} 个对话',
   androidPinned: '置顶',

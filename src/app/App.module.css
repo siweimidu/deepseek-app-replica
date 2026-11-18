@@ -23,7 +23,19 @@
 [data-android] .frame {
   --drawer-edge: min(calc(100% - 68.4px), 380px);
   --drawer-progress: 0;
-  --drawer-transition: 300ms cubic-bezier(0.2, 0.75, 0.24, 1);
+  /* 弹簧曲线：起手快、收尾轻微过冲再回稳，比 cubic-bezier 更有弹性 */
+  --drawer-transition: 430ms linear(
+    0,
+    0.12 6%,
+    0.36 14%,
+    0.64 24%,
+    0.86 34%,
+    0.98 45%,
+    1.018 56%,
+    1.012 68%,
+    0.998 82%,
+    1
+  );
   touch-action: pan-y;
 }
 
@@ -32,8 +44,8 @@
   position: absolute;
   inset: 0;
   background: #000;
-  opacity: calc(0.207 * (1 - var(--drawer-progress)));
-  transition: opacity var(--drawer-transition);
+  opacity: calc(0.28 * var(--drawer-progress));
+  transition: opacity 320ms ease-out;
   pointer-events: none;
 }
 
@@ -45,21 +57,13 @@
   --drawer-transition: 0ms;
 }
 
+/* 官方是抽屉盖在页面上：页面本身不位移、不改圆角，避免整页重绘造成掉帧 */
 [data-android] .main {
   z-index: 1;
   box-sizing: border-box;
   padding-top: var(--android-status-inset, 0px);
   overflow: hidden;
   background: var(--dsw-alias-bg-base);
-  transform-origin: left center;
-  transform: translateX(calc(var(--drawer-edge) * var(--drawer-progress)))
-    scale(calc(1 - 0.0504 * var(--drawer-progress)));
-  border-radius: calc(min(1, var(--drawer-progress) * 6) * 36px);
-  box-shadow: -7px 3px 33px rgb(0 0 0 / calc(0.12 * var(--drawer-progress)));
-  transition:
-    transform var(--drawer-transition),
-    border-radius var(--drawer-transition),
-    box-shadow var(--drawer-transition);
 }
 
 [data-android] .main::after {
@@ -69,8 +73,8 @@
   z-index: 21;
   border-radius: inherit;
   background: var(--dsw-alias-bg-base);
-  opacity: calc(0.7 * var(--drawer-progress));
-  transition: opacity var(--drawer-transition);
+  opacity: calc(0.24 * var(--drawer-progress));
+  transition: opacity 320ms ease-out;
   pointer-events: none;
 }
 

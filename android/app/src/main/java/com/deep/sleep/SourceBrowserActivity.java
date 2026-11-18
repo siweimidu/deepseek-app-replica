@@ -1,4 +1,4 @@
-package io.github.lijiahua1024.dsreplica;
+package com.deep.sleep;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;

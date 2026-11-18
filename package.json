@@ -1,6 +1,6 @@
 {
   "name": "deepsleep",
-  "version": "0.3.0",
+  "version": "0.1.0",
   "description": "DeepSleep：复刻 DeepSeek 官方手机端交互与视觉体验的 Android 客户端。",
   "license": "GPL-3.0-or-later",
   "private": true,

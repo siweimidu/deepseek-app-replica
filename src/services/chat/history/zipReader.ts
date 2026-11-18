@@ -1,4 +1,4 @@
-﻿import { Inflate } from 'fflate'
+import { Inflate } from 'fflate'
 import { blobSource, type ByteSource } from './source.js'
 
 // 文件读取与解压的分块：一次读 1 MiB，解压时同样按 1 MiB 喂给 fflate。

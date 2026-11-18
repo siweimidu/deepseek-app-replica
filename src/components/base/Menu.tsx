@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useState, type ReactNode } from 'react'
+import { useLayoutEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useAnchoredPosition, useDismiss, type Align, type Side } from './anchored.js'
 import styles from './Menu.module.css'
@@ -40,6 +40,32 @@ export const Menu = ({
   )
   useDismiss(open, [anchorRef, floatingRef], close)
   const roomy = variant === 'roomy'
+
+  // Android 抽屉里的菜单必须留在抽屉内：官方就是贴着左侧栏显示的，出界会挡住正文
+  useLayoutEffect(() => {
+    if (!open || !roomy) {
+      return
+    }
+    const menu = floatingRef.current
+    const bounds = document.querySelector('[data-android-drawer]')
+    if (!menu || !bounds) {
+      return
+    }
+    const box = menu.getBoundingClientRect()
+    const limit = bounds.getBoundingClientRect()
+    const pad = 10
+    let shift = 0
+    if (box.left < limit.left + pad) {
+      shift = limit.left + pad - box.left
+    } else if (box.right > limit.right - pad) {
+      shift = limit.right - pad - box.right
+    }
+    if (shift !== 0) {
+      const left = Number.parseFloat(getComputedStyle(menu).left) || 0
+      menu.style.right = 'auto'
+      menu.style.left = `${left + shift}px`
+    }
+  }, [open, roomy, floatingRef])
 
   return (
     <>

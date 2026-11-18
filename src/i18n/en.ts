@@ -1,4 +1,4 @@
-﻿import type { zh } from './zh.js'
+import type { zh } from './zh.js'
 
 export const en = {
   androidWelcome: 'Hi, what can I help you with?',
@@ -25,6 +25,8 @@ export const en = {
   androidPhotoExplain: 'Explain this',
   androidSearchChats: 'Search chats',
   androidNoChats: 'No conversations yet',
+  selectAll: 'Select all',
+  selectNone: 'Deselect all',
   androidSelectChats: 'Select conversations',
   androidSelectedChats: 'Selected conversations ({count})',
   androidPinned: 'Pin',

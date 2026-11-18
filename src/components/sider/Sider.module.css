@@ -1,4 +1,4 @@
-﻿.sider {
+.sider {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -8,6 +8,16 @@
   padding: 6px 12px 0;
   border-right: 1px solid var(--dsw-alias-border-l1);
   background-color: var(--dsw-specific-sidebar-fill);
+  /* 长按列表不要再弹系统的文字选择条 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.sider input,
+.sider textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .top {
@@ -247,25 +257,20 @@
 }
 
 [data-android] .drawer {
-  z-index: 0;
+  /* 抽屉盖在正文之上：正文是 z-index 1 的不透明层 */
+  z-index: 2;
   width: var(--drawer-edge);
   padding-top: var(--android-status-inset, 0px);
   background: var(--dsw-alias-bg-base);
   transform: translateX(calc((var(--drawer-progress) - 1 + var(--back-progress, 0)) * 100%));
   transition: transform var(--drawer-transition);
   box-sizing: border-box;
+  /* 单独一层交给合成器，滑动期间不触发页面重绘 */
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
-[data-android] .drawer::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  background: #000;
-  opacity: calc(0.207 * (1 - var(--drawer-progress)));
-  pointer-events: none;
-  transition: opacity var(--drawer-transition);
-}
+/* 抽屉内容不再跟着淡入淡出，少一层全尺寸重绘 */
 
 [data-android] .drawerMask {
   left: var(--drawer-edge);
@@ -453,5 +458,27 @@
   svg {
     width: 24px;
     height: 24px;
+  }
+}
+
+/* 多选页右上角：全选 + 关闭 */
+.selectionTools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.selectAll {
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-brand-text);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 260ms linear(0, 0.42 14%, 1.06 42%, 1);
+
+  &:active {
+    transform: scale(0.93);
   }
 }

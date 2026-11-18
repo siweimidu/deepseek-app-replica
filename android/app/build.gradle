@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = 'io.github.lijiahua1024.dsreplica'
+    namespace = 'com.deep.sleep'
     compileSdk = 36
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -11,11 +11,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = 'io.github.lijiahua1024.dsreplica'
+        applicationId = 'com.deep.sleep'
         minSdk = 30
         targetSdk = 36
-        versionCode = 5
-        versionName = '0.3.0'
+        versionCode = 1
+        versionName = '0.1.0'
     }
 
     signingConfigs {

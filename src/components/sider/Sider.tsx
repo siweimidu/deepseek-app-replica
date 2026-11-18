@@ -114,7 +114,11 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   }, [])
 
   return (
-    <div className={clsx(styles.sider, mobile && styles.mobile, androidDrawer && styles.drawerSider)}>
+    <div
+      className={clsx(styles.sider, mobile && styles.mobile, androidDrawer && styles.drawerSider)}
+      // 长按时不要弹出系统的文字选择条，会话菜单由页面自己给
+      onContextMenu={(event) => event.preventDefault()}
+    >
       {androidDrawer && selecting ? (
         <div className={styles.selectionHeader}>
           <span>
@@ -122,14 +126,30 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
               ? t('androidSelectedChats', { count: checked.size })
               : t('androidSelectChats')}
           </span>
-          <button
-            type="button"
-            className={styles.closeCircle}
-            aria-label={t('close')}
-            onClick={closeSelection}
-          >
-            <IconCloseOutline16 />
-          </button>
+          <div className={styles.selectionTools}>
+            <button
+              type="button"
+              className={styles.selectAll}
+              onClick={() => {
+                const all = groups.flatMap((group) => group.sessions)
+                setChecked((previous) =>
+                  previous.size === all.length ? new Set() : new Set(all.map((item) => item.id))
+                )
+              }}
+            >
+              {checked.size === groups.flatMap((group) => group.sessions).length && checked.size > 0
+                ? t('selectNone')
+                : t('selectAll')}
+            </button>
+            <button
+              type="button"
+              className={styles.closeCircle}
+              aria-label={t('close')}
+              onClick={closeSelection}
+            >
+              <IconCloseOutline16 />
+            </button>
+          </div>
         </div>
       ) : androidDrawer ? (
         <label className={styles.search}>
@@ -237,7 +257,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
             type="button"
             className={styles.settings}
             aria-label={t('settings')}
-            onClick={() => openSettings(androidDrawer ? 'data' : 'general')}
+            onClick={() => openSettings('general')}
           >
             <span className={styles.settingsIcon} data-avatar={androidDrawer ? '' : undefined}>
               {androidDrawer ? (
