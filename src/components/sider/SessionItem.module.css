@@ -17,8 +17,10 @@
   }
 
   @media (hover: hover) {
-    &:not(.active):hover {
+    @media (hover: hover) {
+      &:not(.active):hover {
       background-color: var(--dsw-specific-sidebar-nav-item-hover);
+    }
     }
 
     &:hover,

@@ -32,8 +32,10 @@
     background-color 120ms ease-out,
     transform var(--motion-press);
 
-  &:hover {
+  @media (hover: hover) {
+    &:hover {
     background-color: var(--dsw-alias-interactive-bg-hover);
+  }
   }
 
   &:active {
@@ -50,8 +52,10 @@
 .danger {
   color: var(--dsw-alias-state-error-primary);
 
-  &:hover {
+  @media (hover: hover) {
+    &:hover {
     background-color: var(--dsw-alias-interactive-bg-hover-danger);
+  }
   }
 }
 
