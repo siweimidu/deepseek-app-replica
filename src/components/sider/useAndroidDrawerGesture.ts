@@ -109,11 +109,10 @@ export const useAndroidDrawerGesture = () => {
         : drag.startedOpen
           ? travelled > -24
           : travelled > drag.edge * 0.12
-    frame.dataset.drawerOpen = String(open)
+    // 属性归 React 管，这里不再直接写，避免 CSS 状态和 store 不一致导致卡在半途
     delete frame.dataset.drawerDragging
-    // Let the transition start at the last rendered drag position.
-    frame.getBoundingClientRect()
     frame.style.removeProperty('--drawer-progress')
+    frame.getBoundingClientRect()
     event.preventDefault()
     if (open) {
       openMobileSider()

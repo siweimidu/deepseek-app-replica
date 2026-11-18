@@ -362,9 +362,14 @@ export const MobileSider = () => {
   const dragged = useRef(false)
   // 兜底：不依赖 frame 手势（键盘属性等会整体禁用它），只要往左带过就关闭
   const closeSwipe = useRef<{ x: number; y: number; armed: boolean } | null>(null)
+  const touchSwipe = useRef<{ x: number; y: number } | null>(null)
   // 关闭后保留一小会儿让滑出动画走完，然后彻底卸载：几百行会话不再常驻
   const [rendered, setRendered] = useState(open)
   useEffect(() => {
+    const frame = drawer.current?.parentElement
+    // 自愈：状态一变就把拖动残留清掉，避免抽屉卡在半途
+    frame?.style.removeProperty('--drawer-progress')
+    frame?.removeAttribute('data-drawer-dragging')
     if (drawer.current) {
       drawer.current.inert = !open
     }
@@ -431,6 +436,36 @@ export const MobileSider = () => {
         className={styles.drawer}
         ref={drawer}
         data-android-drawer={android ? '' : undefined}
+        onTouchStart={(event) => {
+          const touch = event.touches[0]
+          if (!android || !open || !touch) {
+            return
+          }
+          touchSwipe.current = { x: touch.clientX, y: touch.clientY }
+        }}
+        onTouchMove={(event) => {
+          const state = touchSwipe.current
+          const touch = event.touches[0]
+          if (!state || !touch || !open) {
+            return
+          }
+          const dx = touch.clientX - state.x
+          const dy = touch.clientY - state.y
+          if (dx < -22 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+            touchSwipe.current = null
+            closeSwipe.current = null
+            drag.current = null
+            drawer.current?.parentElement?.removeAttribute('data-drawer-dragging')
+            drawer.current?.parentElement?.style.removeProperty('--drawer-progress')
+            closeMobileSider()
+          }
+        }}
+        onTouchEnd={() => {
+          touchSwipe.current = null
+        }}
+        onTouchCancel={() => {
+          touchSwipe.current = null
+        }}
         onPointerDown={(event) => {
           if (!android || !open) {
             return
