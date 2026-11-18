@@ -262,7 +262,7 @@
   width: var(--drawer-edge);
   padding-top: var(--android-status-inset, 0px);
   /* 抽屉底色明显比对话区亮一档，右边界给一条看得见的亮线 */
-  --drawer-surface: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 88%, #ffffff);
+  --drawer-surface: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 94%, #ffffff);
   background: var(--drawer-surface);
   border-right: 1px solid rgb(255 255 255 / 18%);
   box-shadow: 10px 0 34px rgb(0 0 0 / 65%);

@@ -46,13 +46,28 @@
   --drawer-transition: 0ms;
 }
 
-/* 官方是抽屉盖在页面上：页面本身不位移、不改圆角，避免整页重绘造成掉帧 */
+/*
+ * 对话区是一张卡片：抽屉打开时整体右移、左侧出现大圆角与投影，
+ * 这就是官方那条一眼可辨的边界。只让 transform 参与过渡，
+ * 圆角/阴影在打开瞬间一次成型，不做逐帧插值（否则整页重绘会掉帧）。
+ */
 [data-android] .main {
   z-index: 1;
   box-sizing: border-box;
   padding-top: var(--android-status-inset, 0px);
   overflow: hidden;
   background: var(--dsw-alias-bg-base);
+  transform-origin: left center;
+  transform: translateX(0) scale(1);
+  border-radius: 0;
+  transition: transform var(--drawer-transition);
+  will-change: transform;
+}
+
+[data-android] .frame[data-drawer-open='true'] .main {
+  transform: translateX(var(--drawer-edge)) scale(0.952);
+  border-radius: 26px;
+  box-shadow: -12px 0 40px rgb(0 0 0 / 52%);
 }
 
 [data-android] .main::after {
@@ -106,10 +121,4 @@
     bottom: auto;
     height: var(--app-viewport-height, 100dvh);
   }
-}
-
-/* 深色主题：对话区纯黑，侧边栏是 #1b1b1c，打开抽屉时一眼能分出两边 */
-body[data-ds-dark-theme] [data-android] .main,
-body[data-ds-dark-theme] [data-android] .frame {
-  background: #000;
 }
