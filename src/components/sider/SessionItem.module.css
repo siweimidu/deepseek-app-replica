@@ -52,8 +52,10 @@
 }
 
 [data-android] .item {
-  padding-inline: 7px 4px;
+  /* 官方行更高、字更大、左侧留白更宽 */
+  padding-inline: 12px 6px;
   height: 48px;
+  font-size: 16px;
   user-select: none;
 
   .action {
@@ -65,6 +67,12 @@
   }
 
   .action:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 选中行常显「⋯」：官方只在当前会话上露出这个按钮 */
+  &.active .action {
     opacity: 1;
     pointer-events: auto;
   }
