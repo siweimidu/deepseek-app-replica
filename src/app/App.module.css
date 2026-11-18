@@ -69,7 +69,7 @@
   transform: translateX(calc(var(--drawer-width, var(--drawer-edge)) * var(--drawer-progress)));
   border-radius: 26px;
   overflow: hidden;
-  box-shadow: -12px 0 40px rgb(0 0 0 / 52%);
+  box-shadow: -6px 0 16px rgb(0 0 0 / 38%);
 }
 
 [data-android] .main::after {

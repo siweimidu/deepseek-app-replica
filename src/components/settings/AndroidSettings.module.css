@@ -7,14 +7,14 @@
   position: fixed;
   z-index: 950;
   inset: 0;
+  /* 独立布局/绘制，避免设置页与下面聊天页互相触发重排 */
+  contain: layout style paint;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   padding-top: var(--android-status-inset, 0px);
   color: var(--dsw-alias-label-primary);
   background: var(--settings-bg);
-  will-change: transform, opacity;
-  animation: page-enter var(--motion-drawer);
 }
 
 [data-ds-dark-theme] .page {
@@ -447,13 +447,6 @@ a.row:active,
   border-radius: 28px;
   color: #fff;
   background: var(--dsw-alias-brand-text);
-}
-
-@keyframes page-enter {
-  from {
-    opacity: 0;
-    transform: translateX(24%);
-  }
 }
 
 @keyframes overlay-enter {

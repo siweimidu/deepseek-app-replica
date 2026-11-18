@@ -76,6 +76,8 @@ export const usePredictiveBack = (
       element.removeAttribute('data-back')
       element.style.setProperty('--back-progress', '0')
     }
+    // 上一次手势如果被系统打断，偏移会留在元素上：先复位，避免整页偏着导致点击错位
+    reset()
     return claimBackGesture((state, progress) => {
       const element = ref.current
       if (!element) {

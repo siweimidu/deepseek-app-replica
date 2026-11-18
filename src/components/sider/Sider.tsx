@@ -370,13 +370,19 @@ export const MobileSider = () => {
   const drawer = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; width: number; horizontal: boolean } | null>(null)
   const dragged = useRef(false)
+  // 关闭后保留一小会儿让滑出动画走完，然后彻底卸载：几百行会话不再常驻
+  const [rendered, setRendered] = useState(open)
   useEffect(() => {
     if (drawer.current) {
       drawer.current.inert = !open
     }
     if (open) {
       syncWidth()
+      setRendered(true)
+      return
     }
+    const timer = window.setTimeout(() => setRendered(false), 240)
+    return () => window.clearTimeout(timer)
   }, [open])
   // 预测性返回：手势期间抽屉跟着手指往左退
   usePredictiveBack(drawer, closeMobileSider, android && open)
@@ -509,7 +515,7 @@ export const MobileSider = () => {
           }
         }}
       >
-        <Sider mobile />
+        {rendered ? <Sider mobile /> : null}
       </div>
         </>
       )}

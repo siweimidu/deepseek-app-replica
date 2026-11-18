@@ -9,6 +9,8 @@
 }
 
 .scroll {
+  /* 滚动容器自身独立布局与绘制，滚动时不影响页面其它部分 */
+  contain: content;
   display: contents;
 }
 

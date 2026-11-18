@@ -1,4 +1,7 @@
 .item {
+  /* 长列表里屏幕外的行跳过渲染，滚动与打开抽屉都更轻 */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 48px;
   position: relative;
   display: flex;
   align-items: center;
