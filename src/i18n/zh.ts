@@ -194,6 +194,7 @@ export const zh = {
   sessionDetailCreatedAt: '创建时间',
   sessionDetailUpdatedAt: '最后更新',
   sessionDetailMessages: '消息数',
+  sessionDetailContext: '上下文',
   sessionDetailId: '会话 ID',
   accountAvatarChange: '更换头像',
   accountAvatarHint: '支持拖拽与双指缩放，圆形裁切后保存',

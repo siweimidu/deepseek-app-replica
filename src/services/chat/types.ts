@@ -105,6 +105,22 @@ export type AssistantMessage = MessageBranch & {
 
 export type Message = UserMessage | AssistantMessage
 
+/** 上一轮的真实用量，用来预测本轮输入规模，比字数估算准得多 */
+export type ContextUsage = {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+  updatedAt: number
+}
+
+/** 会话锚点卡：把开头内容编译成一页，之后每轮原样放在请求最前面 */
+export type SessionAnchor = {
+  text: string
+  upTo: string
+  createdAt: number
+}
+
 export type Session = {
   id: string
   title: string
@@ -114,6 +130,10 @@ export type Session = {
   messages: Message[]
   /** undefined 表示线性消息列表；null 表示空会话。 */
   rootMessageId?: string | null
+  /** 上一轮的 token 用量（含缓存命中情况） */
+  contextUsage?: ContextUsage
+  /** 开头存档，编译一次后冻结，保证长对话仍记得最初内容 */
+  anchor?: SessionAnchor
 }
 
 /** 会话列表元数据；消息只在打开会话时加载。 */

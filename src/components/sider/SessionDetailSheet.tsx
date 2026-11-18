@@ -5,6 +5,7 @@ import { usePredictiveBack } from '../../app/backGesture.js'
 import { useTranslate } from '../../i18n/index.js'
 import { loadSession, useChatStore } from '../../services/chat/store.js'
 import type { SessionSummary } from '../../services/chat/types.js'
+import { MODEL_WINDOWS } from '../../services/chat/context/budget.js'
 import { formatDateTime } from '../../utils/format.js'
 import { copyText } from '../../utils/clipboard.js'
 import { showToast } from '../base/toastState.js'
@@ -103,6 +104,30 @@ export const SessionDetailSheet = ({
             label={t('sessionDetailMessages')}
             value={loaded ? loaded.messages.length : '—'}
           />
+          {loaded?.contextUsage ? (
+            <Row
+              icon={<IconInfoOutline20 />}
+              label={t('sessionDetailContext')}
+              value={[
+                `${Math.round(loaded.contextUsage.inputTokens / 100) / 10}K / ${
+                  MODEL_WINDOWS['deepseek-flash'] / 1000
+                }K`,
+                loaded.contextUsage.cacheReadTokens
+                  ? `${Math.round(
+                      (loaded.contextUsage.cacheReadTokens /
+                        Math.max(
+                          1,
+                          loaded.contextUsage.cacheReadTokens + loaded.contextUsage.inputTokens
+                        )) *
+                        100
+                    )}% 命中缓存`
+                  : '',
+                loaded.anchor ? '已存档开头' : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            />
+          ) : null}
           <Row
             icon={<IconIdOutline20 />}
             label={t('sessionDetailId')}

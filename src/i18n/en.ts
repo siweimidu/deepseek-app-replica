@@ -201,6 +201,7 @@ export const en = {
   sessionDetailCreatedAt: 'Created',
   sessionDetailUpdatedAt: 'Last updated',
   sessionDetailMessages: 'Messages',
+  sessionDetailContext: 'Context',
   sessionDetailId: 'Session ID',
   accountAvatarChange: 'Change photo',
   accountAvatarHint: 'Drag to move, pinch to zoom — saved as a circle',

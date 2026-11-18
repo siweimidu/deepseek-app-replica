@@ -5,6 +5,8 @@ import type { ChatModel, CreateMessageRequest } from '../api/types.js'
 import { extractFileIds, getFileErrorCode, isRetryableApiError } from '../api/errors.js'
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
 import { useSettings } from '../settings.js'
+import { planContext } from './context/budget.js'
+import { ensureAnchor, withAnchor } from './context/anchor.js'
 import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
 import * as db from './db.js'
 import {
@@ -30,6 +32,7 @@ import {
   type Session,
   type SessionSummary,
   type UserMessage,
+  type ContextUsage,
 } from './types.js'
 
 /** deepseek-flash 同时支持深度思考与图片输入 */
@@ -1040,6 +1043,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
   set((state) => ({ streaming: { ...state.streaming, [sessionId]: controller } }))
   let reply = initial
   let frame = 0
+  let usage: ContextUsage | null = null
   const flush = () => {
     cancelAnimationFrame(frame)
     frame = 0
@@ -1062,8 +1066,14 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
         reply = { ...reply, latestReminder }
         updateReply(sessionId, reply)
         persist(sessionId)
-        const messages = toRequestMessages(
+        // 按预算组窗口：未超触发线时原样发送，前缀保持不变以命中缓存
+        const plan = planContext(
           prepared.history,
+          initial.model ?? MODEL,
+          getSession(sessionId)?.contextUsage?.inputTokens
+        )
+        const messages = toRequestMessages(
+          plan.history,
           prepared.question,
           prepared.prefix,
           initial.thinking ?? false,
@@ -1073,7 +1083,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           useSettings.getState().apiKey ?? '',
           {
             model: initial.model ?? MODEL,
-            system: SYSTEM_PROMPT,
+            system: withAnchor(SYSTEM_PROMPT, getSession(sessionId)?.anchor?.text),
             messages,
             thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
             safety_check: SAFETY_CHECK,
@@ -1084,6 +1094,31 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
         )
         const blockIndexes = new Map<number, number>()
         for await (const event of events) {
+          // 真实用量：message_start 带输入（含缓存命中），message_delta 带累计输出
+          if (event.type === 'message_start') {
+            const reported = event.message.usage
+            if (reported) {
+              usage = {
+                inputTokens: reported.input_tokens,
+                outputTokens: 0,
+                cacheReadTokens: reported.cache_read_input_tokens,
+                cacheWriteTokens: reported.cache_creation_input_tokens,
+                updatedAt: Date.now(),
+              }
+            }
+          } else if (event.type === 'message_delta') {
+            const reported = event.usage
+            if (reported) {
+              // 输入侧用量以 message_start 为准，这里补上累计输出与缓存情况
+              usage = {
+                inputTokens: reported.input_tokens || 0,
+                outputTokens: reported.output_tokens,
+                cacheReadTokens: reported.cache_read_input_tokens || 0,
+                cacheWriteTokens: reported.cache_creation_input_tokens || 0,
+                updatedAt: Date.now(),
+              }
+            }
+          }
           receivedContent ||= event.type === 'content_block_start'
           if (
             event.type === 'message_delta' &&
@@ -1105,6 +1140,25 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           }
         }
         reply = settleReply(reply, 'done', Date.now())
+        if (usage) {
+          const measured = usage
+          updateSession(sessionId, (session) => ({ ...session, contextUsage: measured }))
+          persist(sessionId)
+        }
+        // 开头存档：攒够几轮后生成一次，之后冻结
+        {
+          const current = getSession(sessionId)
+          if (current && !current.anchor) {
+            void ensureAnchor(current, initial.model ?? MODEL)
+              .then((next) => {
+                if (next) {
+                  updateSession(sessionId, () => next)
+                  persist(sessionId)
+                }
+              })
+              .catch(() => undefined)
+          }
+        }
         break
       } catch (error) {
         if (controller.signal.aborted) {
