@@ -48,6 +48,7 @@ export const zh = {
   callVoiceMode: '回到语音',
   callTextMode: '切换到文字',
   callVoiceTitle: '朗读音色',
+  callVoiceSweet: '俏皮甜美',
   callVoiceClear: '清晰明亮',
   callVoiceDeep: '低沉浑厚',
   callAnswerSettings: '回答设置',

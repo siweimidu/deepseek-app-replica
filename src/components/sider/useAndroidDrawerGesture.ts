@@ -3,7 +3,7 @@ import { android } from '../../app/android.js'
 import { closeMobileSider, openMobileSider, useMobileSider } from './mobileSiderState.js'
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
-const slop = 8
+const slop = 4
 
 type Gesture = {
   id: number
@@ -98,8 +98,8 @@ export const useAndroidDrawerGesture = () => {
       return
     }
     const frame = event.currentTarget
-    const flick = event.timeStamp - drag.previousTime < 100 && Math.abs(drag.velocity) > 0.55
-    const open = cancelled ? drag.startedOpen : flick ? drag.velocity > 0 : drag.current >= 0.5
+    const flick = event.timeStamp - drag.previousTime < 100 && Math.abs(drag.velocity) > 0.32
+    const open = cancelled ? drag.startedOpen : flick ? drag.velocity > 0 : drag.current >= 0.22
     frame.dataset.drawerOpen = String(open)
     delete frame.dataset.drawerDragging
     // Let the transition start at the last rendered drag position.

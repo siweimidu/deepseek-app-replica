@@ -40,7 +40,7 @@ const CallSettingsSheet = ({ onClose }: { onClose: () => void }) => {
   const t = useTranslate()
   const { ttsVoice, search } = useSettings()
   const tones = [
-    { id: 'stella' as const, label: t('settingsTtsVoiceStella'), description: t('callVoiceClear') },
+    { id: 'stella' as const, label: t('settingsTtsVoiceStella'), description: t('callVoiceSweet') },
     { id: 'tide' as const, label: t('settingsTtsVoiceTide'), description: t('callVoiceDeep') },
   ]
   const active = tones.findIndex((tone) => tone.id === ttsVoice)
@@ -57,7 +57,7 @@ const CallSettingsSheet = ({ onClose }: { onClose: () => void }) => {
       <section className={styles.sheet} onClick={(event) => event.stopPropagation()}>
         <h2>{t('callVoiceTitle')}</h2>
         <div
-          className={styles.voicePreview}
+          className={styles.voiceStage}
           role="presentation"
           style={{ transform: `translateX(${dragX * 0.4}px)` }}
           onPointerDown={(event) => {
@@ -74,7 +74,7 @@ const CallSettingsSheet = ({ onClose }: { onClose: () => void }) => {
             const moved = startX.current === null ? 0 : event.clientX - startX.current
             startX.current = null
             setDragX(0)
-            if (Math.abs(moved) > 36) {
+            if (Math.abs(moved) > 32) {
               switchTo(moved < 0 ? 1 : -1)
             }
           }}
@@ -82,21 +82,23 @@ const CallSettingsSheet = ({ onClose }: { onClose: () => void }) => {
             startX.current = null
             setDragX(0)
           }}
-        />
-        <div className={styles.voiceName}>{tones[active]?.label}</div>
-        <div className={styles.voiceDesc}>{tones[active]?.description}</div>
-        <div className={styles.dots} role="radiogroup" aria-label={t('callVoiceTitle')}>
-          {tones.map((tone, index) => (
-            <button
-              key={tone.id}
-              type="button"
-              role="radio"
-              aria-checked={index === active}
-              aria-label={tone.label}
-              className={styles.dot}
-              onClick={() => setTtsVoice(tone.id)}
-            />
-          ))}
+        >
+          <div className={styles.voicePreview} data-voice={ttsVoice} aria-hidden="true" />
+          <div className={styles.voiceName}>{tones[active]?.label}</div>
+          <div className={styles.voiceDesc}>{tones[active]?.description}</div>
+          <div className={styles.dots} role="radiogroup" aria-label={t('callVoiceTitle')}>
+            {tones.map((tone, index) => (
+              <button
+                key={tone.id}
+                type="button"
+                role="radio"
+                aria-checked={index === active}
+                aria-label={tone.label}
+                className={styles.dot}
+                onClick={() => setTtsVoice(tone.id)}
+              />
+            ))}
+          </div>
         </div>
         <h2 className={styles.sectionTitle}>{t('callAnswerSettings')}</h2>
         <button

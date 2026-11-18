@@ -41,3 +41,21 @@
   width: 22px;
   height: 22px;
 }
+
+/* 官方：电话是带圆形底色的按钮，比两侧裸图标更"重"一点 */
+[data-android] .call {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent);
+  margin: 0 6px;
+
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+[data-android] .sound {
+  margin: 0 4px;
+}

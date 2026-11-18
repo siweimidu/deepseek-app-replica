@@ -50,6 +50,7 @@ export const en = {
   callVoiceMode: 'Back to voice',
   callTextMode: 'Switch to text',
   callVoiceTitle: 'Voice',
+  callVoiceSweet: 'Playful and sweet',
   callVoiceClear: 'Clear and bright',
   callVoiceDeep: 'Low and warm',
   callAnswerSettings: 'Answer settings',
