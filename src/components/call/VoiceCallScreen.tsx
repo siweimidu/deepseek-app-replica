@@ -6,12 +6,28 @@ import { useSettings, setTtsVoice, setSearch } from '../../services/settings.js'
 import { useChatStore } from '../../services/chat/store.js'
 import { closeVoiceCall, useVoiceCall } from './callState.js'
 import { useCallSession } from './useCallSession.js'
-import { IconGlobeLanguageOutline14 } from '../base/icons.js'
+import { IconChevronDownOutline14, IconGlobeLanguageOutline14 } from '../base/icons.js'
 import {
   IconPhoneOffOutline,
   IconSwitchOutline20,
 } from '../base/appIcons.js'
 import styles from './VoiceCallScreen.module.css'
+
+const MicrophoneIcon = ({ muted }: { muted: boolean }) => (
+  <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 3.4a3 3 0 0 1 3 3v5.2a3 3 0 0 1-6 0V6.4a3 3 0 0 1 3-3Z" fill="currentColor" />
+    <path
+      d="M6.4 10.8a5.6 5.6 0 0 0 11.2 0M12 16.4v3.2"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+    />
+    {muted ? (
+      <path d="m4.5 3.5 15 15" stroke="#ff5a52" strokeWidth="2.2" strokeLinecap="round" />
+    ) : null}
+  </svg>
+)
 
 const formatDuration = (total: number) => {
   const minutes = Math.floor(total / 60)
@@ -82,6 +98,7 @@ export const VoiceCallScreen = () => {
     return active?.title ?? ''
   })
   const [sheet, setSheet] = useState(false)
+  const [mode, setMode] = useState<'voice' | 'text'>('voice')
   const { phase, level, seconds, toggleMute, endCall } = useCallSession(open)
   const page = useRef<HTMLDivElement>(null)
   usePredictiveBack(page, closeVoiceCall, open)
@@ -89,6 +106,7 @@ export const VoiceCallScreen = () => {
   useEffect(() => {
     if (!open) {
       setSheet(false)
+      setMode('voice')
       return
     }
     const onBack = (event: Event) => {
@@ -113,7 +131,12 @@ export const VoiceCallScreen = () => {
           : t('callListening')
 
   return (
-    <div className={styles.page} data-phase={phase} ref={page}>
+    <div
+      className={styles.page}
+      data-phase={phase}
+      data-speaking={level > 0.06 ? 'true' : undefined}
+      ref={page}
+    >
       <header className={styles.header}>
         <div className={styles.headerText}>
           <h1>{title || t('untitledChat')}</h1>
@@ -129,10 +152,13 @@ export const VoiceCallScreen = () => {
         </button>
       </header>
 
-      <div className={styles.stage}>
-        <div className={styles.orb} style={{ ['--level' as string]: level }} aria-hidden="true">
-          <span className={styles.orbCore} />
-        </div>
+      <div className={styles.stage} aria-hidden="true">
+        {mode === 'voice' ? (
+          <div className={styles.orb} style={{ ['--level' as string]: level }}>
+            <span className={styles.orbSheen} />
+            <span className={styles.orbCore} />
+          </div>
+        ) : null}
       </div>
 
       <div className={styles.status} aria-live="polite">
@@ -155,46 +181,69 @@ export const VoiceCallScreen = () => {
           aria-pressed={phase === 'muted'}
           onClick={toggleMute}
         >
-          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M12 3.4a3 3 0 0 1 3 3v5.2a3 3 0 0 1-6 0V6.4a3 3 0 0 1 3-3Z"
-              fill="currentColor"
-            />
-            <path
-              d="M6.4 10.8a5.6 5.6 0 0 0 11.2 0M12 16.4v3.2"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-            />
-            {phase === 'muted' ? (
-              <path d="m4.5 3.5 15 15" stroke="#ff5a5a" strokeWidth="2.2" strokeLinecap="round" />
-            ) : null}
-          </svg>
+          <MicrophoneIcon muted={phase === 'muted'} />
         </button>
-        <button
-          type="button"
-          className={clsx(styles.round, styles.hangup)}
-          aria-label={t('callEnd')}
-          onClick={() => {
-            endCall()
-            closeVoiceCall()
-          }}
-        >
-          <IconPhoneOffOutline />
-        </button>
-        <button
-          type="button"
-          className={clsx(styles.round, styles.textMode)}
-          aria-label={t('callTextMode')}
-          onClick={() => {
-            endCall()
-            closeVoiceCall()
-          }}
-        >
-          <span aria-hidden="true">文</span>
-        </button>
+
+        {mode === 'voice' ? (
+          <button
+            type="button"
+            className={clsx(styles.round, styles.hangup)}
+            aria-label={t('callEnd')}
+            onClick={() => {
+              endCall()
+              closeVoiceCall()
+            }}
+          >
+            <IconPhoneOffOutline />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={styles.inlineOrb}
+            aria-label={t('callTextMode')}
+            onClick={() => setMode('voice')}
+          >
+            <span className={styles.orb} style={{ ['--level' as string]: level }}>
+              <span className={styles.orbSheen} />
+              <span className={styles.orbCore} />
+            </span>
+          </button>
+        )}
+
+        {mode === 'voice' ? (
+          <button
+            type="button"
+            className={clsx(styles.round, styles.textMode)}
+            aria-label={t('callTextMode')}
+            onClick={() => setMode('text')}
+          >
+            <span aria-hidden="true">文</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={clsx(styles.round, styles.hangup)}
+            aria-label={t('callEnd')}
+            onClick={() => {
+              endCall()
+              closeVoiceCall()
+            }}
+          >
+            <IconPhoneOffOutline />
+          </button>
+        )}
       </div>
+
+      {mode === 'text' ? (
+        <button
+          type="button"
+          className={styles.chevron}
+          aria-label={t('callVoiceMode')}
+          onClick={() => setMode('voice')}
+        >
+          <IconChevronDownOutline14 />
+        </button>
+      ) : null}
 
       <p className={styles.caveat}>{t('androidContentCaveat')}</p>
       {sheet ? <CallSettingsSheet onClose={() => setSheet(false)} /> : null}

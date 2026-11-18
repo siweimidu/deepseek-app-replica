@@ -46,6 +46,7 @@ export const en = {
   callMute: 'Mute',
   callUnmute: 'Unmute',
   callEnd: 'Hang up',
+  callVoiceMode: 'Back to voice',
   callTextMode: 'Switch to text',
   callVoiceTitle: 'Voice',
   callVoiceClear: 'Clear and bright',

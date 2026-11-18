@@ -104,7 +104,7 @@ type AndroidDownloadEvent = {
   message: string
 }
 
-export type AndroidDownload = { url: string; release: () => void }
+export type AndroidDownload = { url: string; token: string; size: number; release: () => void }
 
 /**
  * 交给原生下载：WebView 里的 fetch 受 CORS 限制，DeepSeek 导出链接不带
@@ -131,7 +131,12 @@ export const downloadAndroidHistory = (
       }
       window.removeEventListener('android-download', listen)
       if (detail.state === 'ready') {
-        resolve({ url: detail.url, release: () => device.releaseHistoryDownload(token) })
+        resolve({
+          url: detail.url,
+          token,
+          size: detail.loaded,
+          release: () => device.releaseHistoryDownload(token),
+        })
       } else {
         reject(new Error(detail.message || 'Download failed'))
       }

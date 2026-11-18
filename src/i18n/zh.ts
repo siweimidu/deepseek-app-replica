@@ -44,6 +44,7 @@ export const zh = {
   callMute: '静音',
   callUnmute: '取消静音',
   callEnd: '挂断',
+  callVoiceMode: '回到语音',
   callTextMode: '切换到文字',
   callVoiceTitle: '朗读音色',
   callVoiceClear: '清晰明亮',

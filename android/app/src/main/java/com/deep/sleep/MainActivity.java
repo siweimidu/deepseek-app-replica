@@ -263,7 +263,7 @@ public final class MainActivity extends Activity {
         Map<String, String> headers = new HashMap<>();
         headers.put("Accept-Ranges", "bytes");
         headers.put("Cache-Control", "no-store");
-        headers.put("Content-Length", String.valueOf(length));
+        // 不手写 Content-Length：由 WebView 按流长度计算，手写容易让读流提前结束
         if (partial) {
             headers.put("Content-Range", "bytes " + start + "-" + end + "/" + size);
             return new WebResourceResponse("application/zip", null, 206, "Partial Content",
@@ -650,6 +650,34 @@ public final class MainActivity extends Activity {
             downloads.put(token, target);
             startDownload(token, uri.toString());
             return token;
+        }
+
+        /** 兜底通道：直接把缓存里的包分块吐给页面，不经过 HTTP 拦截。 */
+        @JavascriptInterface
+        public long historyDownloadSize(String token) {
+            File file = downloads.get(token);
+            return file != null && file.isFile() ? file.length() : -1L;
+        }
+
+        @JavascriptInterface
+        public String readHistoryDownload(String token, long offset, int length) {
+            File file = downloads.get(token);
+            if (file == null || !file.isFile()) {
+                return "";
+            }
+            long remaining = file.length() - offset;
+            if (remaining <= 0) {
+                return "";
+            }
+            int size = (int) Math.min(length, remaining);
+            byte[] data = new byte[size];
+            try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+                raf.seek(offset);
+                raf.readFully(data);
+            } catch (IOException error) {
+                return "";
+            }
+            return android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP);
         }
 
         @JavascriptInterface
