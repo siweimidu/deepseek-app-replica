@@ -39,6 +39,17 @@ const messageText = (message: MessageLike) => {
   }
 }
 
+/** 把命中的关键词加粗，跟官方一样 */
+const highlight = (text: string, term: string) => {
+  if (!term) {
+    return text
+  }
+  const parts = text.split(new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+  return parts.map((part, index) =>
+    part.toLocaleLowerCase() === term ? <b key={index} className={styles.mark}>{part}</b> : part
+  )
+}
+
 const clock = (value: number) => {
   const date = new Date(value)
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
@@ -89,7 +100,7 @@ export const SessionSearchPage = () => {
     let active = true
     setSearching(true)
     const timer = window.setTimeout(async () => {
-      // 所有会话都要扫到；按批并行，命中一条就立刻显示一条
+      // 每条命中的消息都是一行结果，和官方一致（同一会话可能命中多次）
       const found: Hit[] = []
       for (let offset = 0; offset < all.length; offset += BATCH) {
         const batch = all.slice(offset, offset + BATCH)
@@ -104,30 +115,38 @@ export const SessionSearchPage = () => {
           return
         }
         for (const [row, summary] of batch.entries()) {
-          const cached = textCache.current.get(summary.id)
           const session = loaded[row]
-          const haystack =
-            cached ??
-            (session ? session.messages.map((message) => messageText(message)).join('\n') : '')
-          if (!cached && session) {
-            textCache.current.set(summary.id, haystack)
+          const cached = textCache.current.get(summary.id)
+          const texts =
+            cached !== undefined
+              ? cached.split('\u0000')
+              : (session?.messages.map((message) => messageText(message)) ?? [])
+          if (cached === undefined) {
+            textCache.current.set(summary.id, texts.join('\u0000'))
           }
           const titleHit = summary.title.toLocaleLowerCase().includes(term)
-          const bodyHit = haystack.toLocaleLowerCase().includes(term)
-          if (!titleHit && !bodyHit) {
-            continue
+          for (const [index, text] of texts.entries()) {
+            const at = text.toLocaleLowerCase().indexOf(term)
+            if (at < 0) {
+              continue
+            }
+            const snippet = `${at > 14 ? '…' : ''}${text.slice(Math.max(0, at - 14), at + SNIPPET_LIMIT)}`
+            found.push({
+              id: `${summary.id}-${index}`,
+              title: summary.title,
+              snippet: snippet.replace(/\s+/g, ' ').trim(),
+              updatedAt: summary.updatedAt,
+            })
           }
-          const at = haystack.toLocaleLowerCase().indexOf(term)
-          const snippet =
-            at >= 0
-              ? `${at > 12 ? '…' : ''}${haystack.slice(Math.max(0, at - 12), at + SNIPPET_LIMIT)}`
-              : summary.title
-          found.push({
-            id: summary.id,
-            title: summary.title,
-            snippet: snippet.replace(/\s+/g, ' ').trim(),
-            updatedAt: summary.updatedAt,
-          })
+          // 只有标题命中、正文没命中时也给一行，方便找到
+          if (!texts.some((text) => text.toLocaleLowerCase().includes(term)) && titleHit) {
+            found.push({
+              id: `${summary.id}-title`,
+              title: summary.title,
+              snippet: summary.title,
+              updatedAt: summary.updatedAt,
+            })
+          }
         }
         setHits([...found])
       }
@@ -189,7 +208,7 @@ export const SessionSearchPage = () => {
             </span>
             <span className={styles.body}>
               <span className={styles.title}>{hit.title}</span>
-              <span className={styles.snippet}>{hit.snippet}</span>
+              <span className={styles.snippet}>{highlight(hit.snippet, term)}</span>
             </span>
             <span className={styles.time}>{clock(hit.updatedAt)}</span>
           </button>

@@ -99,7 +99,15 @@ export const useAndroidDrawerGesture = () => {
     }
     const frame = event.currentTarget
     const flick = event.timeStamp - drag.previousTime < 100 && Math.abs(drag.velocity) > 0.32
-    const open = cancelled ? drag.startedOpen : flick ? drag.velocity > 0 : drag.current >= 0.22
+    // 用"实际移动了多少像素"判断，而不是进度：轻轻一滑只有 30px，按进度算会被判成保持打开
+    const travelled = (drag.current - drag.start) * drag.edge
+    const open = cancelled
+      ? drag.startedOpen
+      : flick
+        ? drag.velocity > 0
+        : drag.startedOpen
+          ? travelled > -24
+          : travelled > drag.edge * 0.12
     frame.dataset.drawerOpen = String(open)
     delete frame.dataset.drawerDragging
     // Let the transition start at the last rendered drag position.

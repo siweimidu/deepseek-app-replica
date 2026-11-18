@@ -113,7 +113,9 @@ export const IconPhoneOutline20 = () => (
     strokeLinejoin="round"
     aria-hidden="true"
   >
-    <path d="M6.4 3.2h2.5l1.6 3.9-2 1.3a11.8 11.8 0 0 0 5.1 5.1l1.3-2 3.9 1.6v2.5a2.3 2.3 0 0 1-2.5 2.3A17.2 17.2 0 0 1 4.1 5.7 2.3 2.3 0 0 1 6.4 3.2Z" />
+    <g transform="translate(12 12) scale(1.16) translate(-12 -12)">
+      <path d="M6.4 3.2h2.5l1.6 3.9-2 1.3a11.8 11.8 0 0 0 5.1 5.1l1.3-2 3.9 1.6v2.5a2.3 2.3 0 0 1-2.5 2.3A17.2 17.2 0 0 1 4.1 5.7 2.3 2.3 0 0 1 6.4 3.2Z" />
+    </g>
   </svg>
 )
 

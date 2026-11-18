@@ -151,3 +151,8 @@
   font-size: 14px;
   text-align: center;
 }
+
+.mark {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
