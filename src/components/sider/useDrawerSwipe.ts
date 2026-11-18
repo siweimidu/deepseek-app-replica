@@ -81,6 +81,8 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
 
     const settle = (close: boolean) => {
       release()
+      // 动画期间卸掉裁剪/投影，真机上少一大块光栅化成本
+      frame.setAttribute('data-drawer-animating', '')
       if (close) {
         closeMobileSider()
       } else {
@@ -88,7 +90,10 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
       lastToggleAt.current = Date.now()
       frame.style.removeProperty('--drawer-progress')
-      window.setTimeout(() => frame.style.removeProperty('will-change'), 420)
+      window.setTimeout(() => {
+        frame.removeAttribute('data-drawer-animating')
+        frame.style.removeProperty('will-change')
+      }, 280)
       useSwipeDebug.setState((state) => ({
         toggle: state.toggle + 1,
         last: `${close ? 'close' : 'open'} @${Date.now() % 1000}`,
