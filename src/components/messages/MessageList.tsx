@@ -90,6 +90,9 @@ export const MessageList = ({
   }, [isMobile, scrollToBottom])
 
   // 切换版本后将选择器留在原位置，避免回答长短变化导致操作区跳出视口。
+  // 订阅跳转目标：同一会话里再次搜索时，deps 可能不变，必须靠它触发
+  const scrollTarget = useScrollTarget((state) => state.target)
+
   useLayoutEffect(() => {
     const anchor = restoreScrollRef.current
     const scroll = scrollRef.current
@@ -104,29 +107,51 @@ export const MessageList = ({
       return
     }
     // 搜索点击后：精确滚到命中的那条消息并高亮一下
-    const target = useScrollTarget.getState().target
-    if (target && target.sessionId === session.id && scroll) {
+    if (scrollTarget && scrollTarget.sessionId === session.id && scroll) {
       const node = scroll.querySelector<HTMLElement>(
-        `[data-message-id="${CSS.escape(target.messageId)}"]`
+        `[data-message-id="${CSS.escape(scrollTarget.messageId)}"]`
       )
       if (node) {
         clearScrollTarget()
         stickyRef.current = false
-        // scrollIntoView 在嵌套滚动容器里会去滚祖先，这里自己算偏移
-        const box = scroll.getBoundingClientRect()
-        const rect = node.getBoundingClientRect()
-        const centered = scroll.scrollTop + (rect.top - box.top) - box.height / 2 + rect.height / 2
-        const top = Math.max(0, Math.min(scroll.scrollHeight - scroll.clientHeight, centered))
-        scroll.scrollTo({ top, behavior: 'smooth' })
-        scrollTopRef.current = top
         node.classList.add(styles.flash)
-        window.setTimeout(() => node.classList.remove(styles.flash), 1400)
+        window.setTimeout(() => node.classList.remove(styles.flash), 1600)
+
+        // 布局可能持续变化（图片、代码块撑高），多帧校正直到稳定；用户一碰就停
+        let cancelled = false
+        const stop = () => {
+          cancelled = true
+        }
+        scroll.addEventListener('pointerdown', stop, { once: true, passive: true })
+        scroll.addEventListener('wheel', stop, { once: true, passive: true })
+        scroll.addEventListener('touchstart', stop, { once: true, passive: true })
+
+        const align = (smooth: boolean) => {
+          if (cancelled || !node.isConnected) {
+            return
+          }
+          const box = scroll.getBoundingClientRect()
+          const rect = node.getBoundingClientRect()
+          const centered =
+            scroll.scrollTop + (rect.top - box.top) - box.height / 2 + rect.height / 2
+          const top = Math.max(0, Math.min(scroll.scrollHeight - scroll.clientHeight, centered))
+          if (Math.abs(scroll.scrollTop - top) < 2) {
+            return
+          }
+          scroll.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
+          scrollTopRef.current = top
+        }
+
+        align(true)
+        window.setTimeout(() => align(false), 120)
+        window.setTimeout(() => align(false), 360)
+        window.setTimeout(() => align(false), 720)
         return
       }
     }
     stickyRef.current = true
     scrollToBottom()
-  }, [session.id, lastMessageId, scrollToBottom])
+  }, [session.id, lastMessageId, scrollToBottom, scrollTarget])
 
   useEffect(closeSearchPanel, [session.id, lastMessageId])
 
