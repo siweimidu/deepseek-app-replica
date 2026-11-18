@@ -55,7 +55,7 @@ export const App = () => {
     state.activeId === null ? false : state.sessionLoadErrors[state.activeId] === true
   )
   const frameRef = useMobileViewport(isMobile)
-  useDrawerSwipe(frameRef)
+  const drawerSwipe = useDrawerSwipe(frameRef)
   const streaming = useChatStore((state) =>
     state.activeId === null ? false : Object.hasOwn(state.streaming, state.activeId)
   )
@@ -126,6 +126,7 @@ export const App = () => {
         ref={frameRef}
         className={styles.frame}
         data-drawer-open={drawerOpen}
+        {...drawerSwipe}
       >
         {isMobile ? <MobileSider /> : siderCollapsed ? null : <Sider />}
         <main className={styles.main}>
