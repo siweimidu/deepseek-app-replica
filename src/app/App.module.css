@@ -55,7 +55,6 @@
   z-index: 1;
   box-sizing: border-box;
   padding-top: var(--android-status-inset, 0px);
-  overflow: hidden;
   background: var(--dsw-alias-bg-base);
   transform-origin: left center;
   transform: translateX(0);
@@ -63,13 +62,13 @@
   transition: transform var(--drawer-transition);
 }
 
-[data-android] .frame[data-drawer-open='true'] .main {
-  will-change: transform;
-}
+
 
 [data-android] .frame[data-drawer-open='true'] .main {
-  transform: translateX(var(--drawer-edge));
+  /* 跟着同一个 progress 值走，拖动时和抽屉一起动 */
+  transform: translateX(calc(var(--drawer-edge) * var(--drawer-progress)));
   border-radius: 26px;
+  overflow: hidden;
   box-shadow: -12px 0 40px rgb(0 0 0 / 52%);
 }
 

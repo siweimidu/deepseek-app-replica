@@ -271,12 +271,8 @@
   border-right: 1px solid rgb(255 255 255 / 8%);
   /* 纵向滚动留给列表，横向留给「左滑关闭」 */
   touch-action: pan-y;
-  transform: translateX(
-    calc(
-      (var(--drawer-progress) - 1 + var(--back-progress, 0)) * 100% +
-        var(--drawer-drag, 0px)
-    )
-  );
+  /* 位置完全由 --drawer-progress 决定，拖动时改它就同时带动卡片 */
+  transform: translateX(calc((var(--drawer-progress) - 1 + var(--back-progress, 0)) * 100%));
   transition: transform var(--drawer-transition);
   box-sizing: border-box;
   /* 单独一层交给合成器，滑动期间不触发页面重绘 */

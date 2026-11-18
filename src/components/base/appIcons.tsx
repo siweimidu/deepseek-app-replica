@@ -100,13 +100,20 @@ export const IconIdOutline20 = () => (
   </svg>
 )
 
-/** 通话入口：听筒 */
+/** 通话入口：听筒。尺寸/描边与顶部其它图标保持一致（22 / 1.9 / 圆角端点） */
 export const IconPhoneOutline20 = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      {...line}
-      d="M6.6 3.4h2.2l1.5 3.6-1.8 1.2a11.4 11.4 0 0 0 5.3 5.3l1.2-1.8 3.6 1.5v2.2a2.2 2.2 0 0 1-2.4 2.2A16.6 16.6 0 0 1 4.4 5.8a2.2 2.2 0 0 1 2.2-2.4Z"
-    />
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M6.4 3.2h2.5l1.6 3.9-2 1.3a11.8 11.8 0 0 0 5.1 5.1l1.3-2 3.9 1.6v2.5a2.3 2.3 0 0 1-2.5 2.3A17.2 17.2 0 0 1 4.1 5.7 2.3 2.3 0 0 1 6.4 3.2Z" />
   </svg>
 )
 

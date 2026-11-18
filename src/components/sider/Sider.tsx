@@ -378,32 +378,37 @@ export const MobileSider = () => {
   // 预测性返回：手势期间抽屉跟着手指往左退
   usePredictiveBack(drawer, closeMobileSider, android && open)
 
-  /** 手势进行中直接改位移，松手再交给过渡动画收尾 */
-  const setOffset = (offset: number) => {
-    const element = drawer.current
-    if (!element) {
+  /** 拖动与卡片共用 --drawer-progress：改一个值两边一起动，不会一个动一个不动 */
+  const setProgress = (value: number) => {
+    const frame = drawer.current?.parentElement
+    if (!frame) {
       return
     }
-    element.style.setProperty('--drawer-drag', `${offset}px`)
+    frame.style.setProperty('--drawer-progress', String(Math.min(1, Math.max(0, value))))
+  }
+
+  const releaseDrag = () => {
+    const frame = drawer.current?.parentElement
+    if (!frame) {
+      return
+    }
+    frame.removeAttribute('data-drawer-dragging')
+    frame.style.removeProperty('--drawer-progress')
   }
 
   const settle = (close: boolean) => {
-    const element = drawer.current
-    if (!element) {
-      return
-    }
-    const width = element.getBoundingClientRect().width
-    element.style.transition = ''
-    if (!close) {
-      setOffset(0)
-      return
-    }
-    // 先滑到底，动画结束后再真正关闭，避免自定义属性不参与过渡造成的跳变
-    setOffset(-width)
-    window.setTimeout(() => {
+    releaseDrag()
+    const width = drawer.current?.getBoundingClientRect().width ?? 0
+    if (close && width > 0) {
+      // 让状态驱动的过渡从当前位置继续滑出，而不是跳变
       closeMobileSider()
-      requestAnimationFrame(() => setOffset(0))
-    }, 260)
+      return
+    }
+    if (!close) {
+      // 松手位置已过阈值就回到完全打开
+      setProgress(1)
+      requestAnimationFrame(() => releaseDrag())
+    }
   }
 
   return (
@@ -450,9 +455,9 @@ export const MobileSider = () => {
             } catch {
               // 指针已失效（例如被系统收回）时忽略即可
             }
-            element.style.transition = 'none'
+            element.parentElement?.setAttribute('data-drawer-dragging', '')
           }
-          setOffset(Math.min(0, Math.max(-state.width, dx)))
+          setProgress(1 + Math.min(0, Math.max(-state.width, dx)) / state.width)
         }}
         onPointerUp={(event) => {
           const state = drag.current
@@ -468,8 +473,11 @@ export const MobileSider = () => {
           } catch {
             // 同上，指针已失效时无需释放
           }
-          const offset = Number.parseFloat(element?.style.getPropertyValue('--drawer-drag') ?? '0') || 0
-          settle(offset < -state.width * 0.24)
+          const progress =
+            Number.parseFloat(
+              element?.parentElement?.style.getPropertyValue('--drawer-progress') ?? '1'
+            ) || 1
+          settle(progress < 0.76)
           window.setTimeout(() => {
             dragged.current = false
           }, 140)

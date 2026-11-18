@@ -41,8 +41,3 @@
   width: 22px;
   height: 22px;
 }
-
-/* 语音通话入口与静音按钮之间留一点间距 */
-.call {
-  margin-left: 2px;
-}
