@@ -18,6 +18,13 @@ import {
 } from '../base/appIcons.js'
 import styles from './SessionDetailSheet.module.css'
 
+const formatTokens = (value: number) =>
+  value >= 1000 ? `${Math.round(value / 100) / 10}K` : String(value)
+
+/** 128000 → 128K，1000000 → 1M */
+const formatWindow = (value: number) =>
+  value >= 1_000_000 ? `${Math.round(value / 100_000) / 10}M` : `${Math.round(value / 1000)}K`
+
 const Row = ({
   icon,
   label,
@@ -59,21 +66,35 @@ export const SessionDetailSheet = ({
   // 挂载后下一帧再切换，保证 transition 从收起状态开始播。
   const [shown, setShown] = useState(false)
   // 缓存命中率：命中的缓存 token 占本轮输入侧总量的比例（只在详情里展示）
+  // 会话本身不存模型，取最后一条助手消息的模型；没有就按默认
+  const activeModel =
+    (() => {
+      const messages = loaded?.messages ?? []
+      for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const candidate = messages[index]
+        if (candidate.role === 'assistant' && candidate.model) {
+          return candidate.model
+        }
+      }
+      return null
+    })() ?? 'deepseek-flash'
+
   const cache = (() => {
     const usage = loaded?.contextUsage
     if (!usage) {
       return null
     }
+    // 服务端完全没返回缓存字段时，不要谎报 0%
+    if (usage.cacheReadTokens + usage.cacheWriteTokens === 0) {
+      return { label: '—', detail: '服务端未返回缓存数据' }
+    }
     const total = usage.inputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
     if (total <= 0) {
       return null
     }
-    const rate = Math.round((usage.cacheReadTokens / total) * 100)
-    const kilo = (value: number) =>
-      value >= 1000 ? `${Math.round(value / 100) / 10}K` : String(value)
     return {
-      rate,
-      detail: `命中 ${kilo(usage.cacheReadTokens)} / 输入 ${kilo(total)}`,
+      label: `${Math.round((usage.cacheReadTokens / total) * 100)}%`,
+      detail: `命中 ${formatTokens(usage.cacheReadTokens)} / 输入 ${formatTokens(total)}`,
     }
   })()
   const sheet = useRef<HTMLElement>(null)
@@ -122,11 +143,18 @@ export const SessionDetailSheet = ({
             label={t('sessionDetailMessages')}
             value={loaded ? loaded.messages.length : '—'}
           />
+          {activeModel ? (
+            <Row
+              icon={<IconInfoOutline20 />}
+              label={t('sessionDetailModel')}
+              value={activeModel}
+            />
+          ) : null}
           {cache ? (
             <Row
               icon={<IconCopyOutline20 />}
               label={t('sessionDetailCacheHit')}
-              value={`${cache.rate}% · ${cache.detail}`}
+              value={`${cache.label} · ${cache.detail}`}
             />
           ) : null}
           {loaded?.contextUsage ? (
@@ -134,9 +162,9 @@ export const SessionDetailSheet = ({
               icon={<IconInfoOutline20 />}
               label={t('sessionDetailContext')}
               value={[
-                `${Math.round(loaded.contextUsage.inputTokens / 100) / 10}K / ${
-                  MODEL_WINDOWS['deepseek-flash'] / 1000
-                }K`,
+                `${formatTokens(loaded.contextUsage.inputTokens)} / ${formatWindow(
+                  MODEL_WINDOWS[activeModel] ?? MODEL_WINDOWS['deepseek-flash']
+                )}`,
                 loaded.anchor ? '已存档开头' : '',
               ]
                 .filter(Boolean)

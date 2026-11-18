@@ -194,6 +194,7 @@ export const zh = {
   sessionDetailCreatedAt: '创建时间',
   sessionDetailUpdatedAt: '最后更新',
   sessionDetailCacheHit: '缓存命中率',
+  sessionDetailModel: '模型',
   sessionDetailMessages: '消息数',
   sessionDetailContext: '上下文',
   sessionDetailId: '会话 ID',
