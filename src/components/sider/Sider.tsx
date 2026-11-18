@@ -13,7 +13,7 @@ import {
   IconTrashOutline16,
   NewChatIcon,
 } from '../base/icons.js'
-import { IconPinOutline20 } from '../base/appIcons.js'
+import { IconCollapseSidebar16, IconPinOutline20 } from '../base/appIcons.js'
 import { setPinnedSessions, setSiderCollapsed, useSettings } from '../../services/settings.js'
 import { groupSessions } from '../../services/chat/sessionGroups.js'
 import { newChat, removeSession, useChatStore } from '../../services/chat/store.js'
@@ -184,17 +184,27 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
           </div>
         </div>
       ) : androidDrawer ? (
-        <label className={styles.search} onClick={() => openSessionSearch()}>
-          <IconSearchOutline16 />
-          <input
-            type="search"
-            placeholder={t('androidSearchChats')}
-            aria-label={t('androidSearchChats')}
-            value=""
-            readOnly
-            onFocus={() => openSessionSearch()}
-          />
-        </label>
+        <div className={styles.searchRow}>
+          <label className={styles.search} onClick={() => openSessionSearch()}>
+            <IconSearchOutline16 />
+            <input
+              type="search"
+              placeholder={t('androidSearchChats')}
+              aria-label={t('androidSearchChats')}
+              value=""
+              readOnly
+              onFocus={() => openSessionSearch()}
+            />
+          </label>
+          <button
+            type="button"
+            className={styles.collapse}
+            aria-label={t('collapseSiderbarButton')}
+            onClick={closeMobileSider}
+          >
+            <IconCollapseSidebar16 />
+          </button>
+        </div>
       ) : (
         <>
           <div className={styles.top}>

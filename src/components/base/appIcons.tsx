@@ -135,3 +135,21 @@ export const IconSwitchOutline20 = () => (
     <path {...line} d="M4 8.6h15.2M20 8.6l-3.4-3.2M20 15.4H4.8M4.8 15.4l3.4 3.2" />
   </svg>
 )
+
+/** 收起侧边栏：两个圆点 + 一条竖线 */
+export const IconCollapseSidebar16 = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
+    <circle cx="8" cy="9.2" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="8" cy="14.8" r="1.5" fill="currentColor" stroke="none" />
+    <path d="M16 5.5v13" />
+  </svg>
+)
