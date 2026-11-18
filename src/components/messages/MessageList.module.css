@@ -42,12 +42,12 @@
   padding-bottom: 24px;
 }
 
-/* 搜索命中的消息：短暂高亮，1.4s 内淡出 */
+/* 搜索命中的消息：短暂高亮，2s 后淡出 */
 .flash {
   border-radius: 14px;
-  background: color-mix(in srgb, #4d6bfe 14%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, #4d6bfe 55%, transparent);
+  background: color-mix(in srgb, #4d6bfe 20%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, #4d6bfe 70%, transparent);
   transition:
-    background-color 500ms ease-out,
-    box-shadow 500ms ease-out;
+    background-color 600ms ease-out,
+    box-shadow 600ms ease-out;
 }
