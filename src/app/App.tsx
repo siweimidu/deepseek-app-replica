@@ -30,7 +30,7 @@ import { stopReadAloud } from '../services/speech/readAloud.js'
 import { CollapsedSider } from '../components/sider/CollapsedSider.js'
 import { closeMobileSider, useMobileSider } from '../components/sider/mobileSiderState.js'
 import { MobileSider, Sider } from '../components/sider/Sider.js'
-import { useAndroidDrawerGesture } from '../components/sider/useAndroidDrawerGesture.js'
+import { useDrawerSwipe } from '../components/sider/useDrawerSwipe.js'
 import styles from './App.module.css'
 
 export const App = () => {
@@ -38,7 +38,6 @@ export const App = () => {
   const isMobile = useIsMobile()
   const apiKey = useSettings((state) => state.apiKey)
   const drawerOpen = useMobileSider((state) => state.open)
-  const drawerGesture = useAndroidDrawerGesture()
   const locale = useSettings((state) => state.locale)
   const fontSize = useSettings((state) => state.fontSize)
   // 移动端侧边栏以独立抽屉管理开合状态
@@ -56,6 +55,7 @@ export const App = () => {
     state.activeId === null ? false : state.sessionLoadErrors[state.activeId] === true
   )
   const frameRef = useMobileViewport(isMobile)
+  useDrawerSwipe(frameRef)
   const streaming = useChatStore((state) =>
     state.activeId === null ? false : Object.hasOwn(state.streaming, state.activeId)
   )
@@ -126,7 +126,6 @@ export const App = () => {
         ref={frameRef}
         className={styles.frame}
         data-drawer-open={drawerOpen}
-        {...(android ? drawerGesture : {})}
       >
         {isMobile ? <MobileSider /> : siderCollapsed ? null : <Sider />}
         <main className={styles.main}>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { create } from 'zustand'
+import { usePredictiveBack } from '../../app/backGesture.js'
 import { useTranslate } from '../../i18n/index.js'
 import { loadSession } from '../../services/chat/db.js'
 import { buildReplyView } from '../../services/chat/view.js'
@@ -75,6 +76,7 @@ export const SessionSearchPage = () => {
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<Hit[]>([])
   const [searching, setSearching] = useState(false)
+  const pageRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const textCache = useRef(new Map<string, string>())
 
@@ -87,6 +89,8 @@ export const SessionSearchPage = () => {
     const timer = window.setTimeout(() => inputRef.current?.focus(), 60)
     return () => window.clearTimeout(timer)
   }, [open])
+
+  usePredictiveBack(pageRef, closeSessionSearch, open)
 
   const term = query.trim().toLocaleLowerCase()
   const all = useMemo(() => sessions, [sessions])
@@ -170,7 +174,7 @@ export const SessionSearchPage = () => {
   }
 
   return (
-    <div className={styles.page} role="dialog" aria-modal="true">
+    <div className={styles.page} role="dialog" aria-modal="true" ref={pageRef}>
       <div className={styles.bar}>
         <button type="button" className={styles.back} aria-label="返回" onClick={closeSessionSearch}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">

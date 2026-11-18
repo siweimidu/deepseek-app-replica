@@ -358,11 +358,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
 export const MobileSider = () => {
   const open = useMobileSider((state) => state.open)
   const drawer = useRef<HTMLDivElement>(null)
-  const drag = useRef<{ x: number; y: number; width: number; horizontal: boolean } | null>(null)
-  const dragged = useRef(false)
   // 兜底：不依赖 frame 手势（键盘属性等会整体禁用它），只要往左带过就关闭
-  const closeSwipe = useRef<{ x: number; y: number; armed: boolean } | null>(null)
-  const touchSwipe = useRef<{ x: number; y: number } | null>(null)
   // 关闭后保留一小会儿让滑出动画走完，然后彻底卸载：几百行会话不再常驻
   const [rendered, setRendered] = useState(open)
   useEffect(() => {
@@ -384,14 +380,6 @@ export const MobileSider = () => {
   // 预测性返回：手势期间抽屉跟着手指往左退
   usePredictiveBack(drawer, closeMobileSider, android && open)
 
-  /** 拖动与卡片共用 --drawer-progress：改一个值两边一起动，不会一个动一个不动 */
-  const setProgress = (value: number) => {
-    const frame = drawer.current?.parentElement
-    if (!frame) {
-      return
-    }
-    frame.style.setProperty('--drawer-progress', String(Math.min(1, Math.max(0, value))))
-  }
 
   /** 抽屉宽度只由这里算一次，抽屉与卡片共用同一个像素值 */
   const syncWidth = () => {
@@ -403,29 +391,7 @@ export const MobileSider = () => {
     frame.style.setProperty('--drawer-width', `${element.getBoundingClientRect().width}px`)
   }
 
-  const releaseDrag = () => {
-    const frame = drawer.current?.parentElement
-    if (!frame) {
-      return
-    }
-    frame.removeAttribute('data-drawer-dragging')
-    frame.style.removeProperty('--drawer-progress')
-  }
 
-  const settle = (close: boolean) => {
-    releaseDrag()
-    const width = drawer.current?.getBoundingClientRect().width ?? 0
-    if (close && width > 0) {
-      // 让状态驱动的过渡从当前位置继续滑出，而不是跳变
-      closeMobileSider()
-      return
-    }
-    if (!close) {
-      // 松手位置已过阈值就回到完全打开
-      setProgress(1)
-      requestAnimationFrame(() => releaseDrag())
-    }
-  }
 
   return (
     <>
@@ -436,132 +402,6 @@ export const MobileSider = () => {
         className={styles.drawer}
         ref={drawer}
         data-android-drawer={android ? '' : undefined}
-        onTouchStart={(event) => {
-          const touch = event.touches[0]
-          if (!android || !open || !touch) {
-            return
-          }
-          touchSwipe.current = { x: touch.clientX, y: touch.clientY }
-        }}
-        onTouchMove={(event) => {
-          const state = touchSwipe.current
-          const touch = event.touches[0]
-          if (!state || !touch || !open) {
-            return
-          }
-          const dx = touch.clientX - state.x
-          const dy = touch.clientY - state.y
-          if (dx < -22 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-            touchSwipe.current = null
-            closeSwipe.current = null
-            drag.current = null
-            drawer.current?.parentElement?.removeAttribute('data-drawer-dragging')
-            drawer.current?.parentElement?.style.removeProperty('--drawer-progress')
-            closeMobileSider()
-          }
-        }}
-        onTouchEnd={() => {
-          touchSwipe.current = null
-        }}
-        onTouchCancel={() => {
-          touchSwipe.current = null
-        }}
-        onPointerDown={(event) => {
-          if (!android || !open) {
-            return
-          }
-          closeSwipe.current = { x: event.clientX, y: event.clientY, armed: true }
-          // 每次按下都复位：上一次拖拽若被系统打断，标志会一直为真，导致后续点击全被吞掉
-          dragged.current = false
-          drag.current = {
-            x: event.clientX,
-            y: event.clientY,
-            width: event.currentTarget.getBoundingClientRect().width,
-            horizontal: false,
-          }
-        }}
-        onPointerMove={(event) => {
-          const state = drag.current
-          const element = drawer.current
-          if (!state || !element) {
-            return
-          }
-          const dx = event.clientX - state.x
-          const dy = event.clientY - state.y
-          if (!state.horizontal) {
-            if (Math.abs(dx) < 6 && Math.abs(dy) < 6) {
-              return
-            }
-            // 纵向优先交给列表滚动，只有明显横向才接管
-            if (Math.abs(dx) <= Math.abs(dy) * 1.1) {
-              drag.current = null
-              return
-            }
-            state.horizontal = true
-            dragged.current = true
-            try {
-              element.setPointerCapture(event.pointerId)
-            } catch {
-              // 指针已失效（例如被系统收回）时忽略即可
-            }
-            element.parentElement?.setAttribute('data-drawer-dragging', '')
-          }
-          setProgress(1 + Math.min(0, Math.max(-state.width, dx)) / state.width)
-        }}
-        onPointerUp={(event) => {
-          const swipe = closeSwipe.current
-          closeSwipe.current = null
-          if (swipe?.armed) {
-            const dx = event.clientX - swipe.x
-            const dy = event.clientY - swipe.y
-            // 往左 20px 且横向为主：直接收起，不依赖进度与手势模块
-            if (dx < -20 && Math.abs(dx) > Math.abs(dy)) {
-              closeMobileSider()
-              drag.current = null
-              return
-            }
-          }
-          const state = drag.current
-          drag.current = null
-          if (!state?.horizontal) {
-            return
-          }
-          const element = drawer.current
-          try {
-            if (element?.hasPointerCapture(event.pointerId)) {
-              element.releasePointerCapture(event.pointerId)
-            }
-          } catch {
-            // 同上，指针已失效时无需释放
-          }
-          const progress =
-            Number.parseFloat(
-              element?.parentElement?.style.getPropertyValue('--drawer-progress') ?? '1'
-            ) || 1
-          const travelled = event.clientX - state.x
-          // 轻划也算数：往左 18px、往右 12% 都直接收起，不必拖到进度阈值
-          const flickLeft = travelled < -18
-          const flickRight = travelled > state.width * 0.12
-          settle(flickLeft || flickRight || progress < 0.76)
-          window.setTimeout(() => {
-            dragged.current = false
-          }, 140)
-        }}
-        onPointerCancel={() => {
-          if (drag.current?.horizontal) {
-            settle(false)
-          }
-          drag.current = null
-          dragged.current = false
-          closeSwipe.current = null
-        }}
-        onClickCapture={(event) => {
-          // 刚拖动过就不要把这次手势当成点击
-          if (dragged.current) {
-            event.preventDefault()
-            event.stopPropagation()
-          }
-        }}
       >
         {rendered ? <Sider mobile /> : null}
       </div>
