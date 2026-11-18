@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { android, saveAndroidHistory } from '../../app/android.js'
-import { useTranslate, type LinkedMessage } from '../../i18n/index.js'
+import { useTranslate } from '../../i18n/index.js'
 import type { TtsVoice } from '../../services/api/speech.js'
-import {
-  BackupError,
-  clearHistory,
-  exportHistory,
-  importHistory,
-} from '../../services/chat/backup.js'
+import { clearHistory, exportHistory } from '../../services/chat/backup.js'
+import { startFileImport, startLinkImport, useImportJob } from '../../services/chat/importJob.js'
+import { normalizeArchiveUrl } from '../../services/chat/history/linkImport.js'
 import { useChatStore } from '../../services/chat/store.js'
 import {
   setApiKey,
@@ -17,6 +14,7 @@ import {
   setThemePreference,
   setTtsVoice,
   useSettings,
+  setAvatar,
   type LocalePreference,
   type ThemePreference,
 } from '../../services/settings.js'
@@ -33,6 +31,7 @@ import {
 import { showToast } from '../base/toastState.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
 import { closeSettings, useSettingsDialog } from './settingsDialogState.js'
+import { AvatarEditor } from './AvatarEditor.js'
 import styles from './AndroidSettings.module.css'
 
 const appVersion = document.querySelector<HTMLMetaElement>(
@@ -48,7 +47,7 @@ type Page =
   | 'personalization'
   | 'agreements'
   | 'help'
-type Popup = 'locale' | 'theme' | 'voice' | 'logout' | 'delete' | 'import'
+type Popup = 'locale' | 'theme' | 'voice' | 'logout' | 'delete' | 'link' | 'avatar'
 
 const Profile = () => (
   <svg
@@ -220,19 +219,24 @@ export const AndroidSettings = () => {
 
 const Settings = ({ start }: { start: Page }) => {
   const t = useTranslate()
-  const { locale, localePreference, themePreference, fontSize, foldThinking, ttsVoice } =
+  const { locale, localePreference, themePreference, fontSize, foldThinking, ttsVoice, avatar } =
     useSettings()
   const tr = (chinese: string, english: string) => (locale === 'zh-CN' ? chinese : english)
   const [page, setPage] = useState<Page>(start)
   const [popup, setPopup] = useState<Popup | null>(null)
   const [tone, setTone] = useState(ttsVoice)
   const [busy, setBusy] = useState(false)
-  const [file, setFile] = useState<File | null>(null)
-  const [importStatus, setImportStatus] = useState<LinkedMessage | null>(null)
+  const [link, setLink] = useState('')
   const [archive, setArchive] = useState<Awaited<ReturnType<typeof exportHistory>> | null>(null)
   const importInput = useRef<HTMLInputElement>(null)
+  const avatarInput = useRef<HTMLInputElement>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const sessions = useChatStore((state) => state.sessions.length)
   const editor = useApiKeyEditor()
+  const job = useImportJob()
+  const percent = Math.round(job.percent * 100)
+  const importing =
+    job.phase === 'downloading' || job.phase === 'reading' || job.phase === 'writing'
 
   const labels: Record<Page, string> = {
     root: t('settings'),
@@ -284,7 +288,7 @@ const Settings = ({ start }: { start: Page }) => {
     }
     if (popup) {
       setPopup(null)
-      setFile(null)
+      setLink('')
     } else if (page === 'root') {
       closeSettings()
     } else {
@@ -330,29 +334,13 @@ const Settings = ({ start }: { start: Page }) => {
     }
     setBusy(true)
     try {
-      if (popup === 'import' && file) {
-        setPopup(null)
-        setFile(null)
-        setImportStatus({ key: 'historyImporting' })
-        const count = await importHistory(file)
-        setImportStatus({
-          key: count === 1 ? 'historyImportedOne' : 'historyImported',
-          params: { count },
-        })
-      } else if (popup === 'delete') {
+      if (popup === 'delete') {
         await clearHistory()
         showToast({ key: 'historyDeleted' })
         setPopup(null)
       }
-    } catch (error) {
-      if (popup === 'import') {
-        setImportStatus({
-          key: error instanceof BackupError ? error.key : 'historyImportFailed',
-          type: 'error',
-        })
-      } else {
-        showToast({ key: 'historyDeleteFailed', type: 'error' })
-      }
+    } catch {
+      showToast({ key: 'historyDeleteFailed', type: 'error' })
     } finally {
       setBusy(false)
     }
@@ -434,24 +422,55 @@ const Settings = ({ start }: { start: Page }) => {
           </>
         ) : null}
         {page === 'account' ? (
-          <Group label={tr('账户', 'Account')}>
-            <Row
-              label="DeepSeek API Key"
-              icon={<Profile />}
-              value="••••••••"
-              onClick={() => editor.setEditing(true)}
-            />
-            {editor.editing ? (
-              <div className={styles.credentials}>
-                <ApiKeyField editor={editor} />
-                <ApiKeyConfirm editor={editor} />
-              </div>
-            ) : null}
-            <Row
-              label={tr('开放平台', 'Open platform')}
-              href="https://platform.deepseek.com/api_keys"
-            />
-          </Group>
+          <>
+            <Group label={tr('账户', 'Account')}>
+              <button
+                type="button"
+                className={styles.avatarRow}
+                onClick={() => avatarInput.current?.click()}
+              >
+                <span className={styles.avatarPreview}>
+                  {avatar ? <img src={avatar} alt="" /> : <Profile />}
+                </span>
+                <span className={styles.avatarText}>
+                  <span className={styles.avatarName}>{tr('头像', 'Photo')}</span>
+                  <span className={styles.avatarHint}>{t('accountAvatarChange')}</span>
+                </span>
+                <span className={styles.arrow}>
+                  <IconChevronRightOutline14 />
+                </span>
+              </button>
+              <input
+                ref={avatarInput}
+                hidden
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const picked = event.target.files?.[0]
+                  event.target.value = ''
+                  if (picked) {
+                    setAvatarFile(picked)
+                  }
+                }}
+              />
+              <Row
+                label="DeepSeek API Key"
+                icon={<Profile />}
+                value="••••••••"
+                onClick={() => editor.setEditing(true)}
+              />
+              {editor.editing ? (
+                <div className={styles.credentials}>
+                  <ApiKeyField editor={editor} />
+                  <ApiKeyConfirm editor={editor} />
+                </div>
+              ) : null}
+              <Row
+                label={tr('开放平台', 'Open platform')}
+                href="https://platform.deepseek.com/api_keys"
+              />
+            </Group>
+          </>
         ) : null}
         {page === 'data' ? (
           <>
@@ -475,9 +494,10 @@ const Settings = ({ start }: { start: Page }) => {
             </Group>
             <Group>
               <Row
-                label={t('historyImport')}
+                label={t('historyPickFile')}
+                icon={<IconDataOutline16 />}
                 arrow={false}
-                disabled={busy}
+                disabled={busy || importing}
                 onClick={() => importInput.current?.click()}
               />
               <input
@@ -489,19 +509,54 @@ const Settings = ({ start }: { start: Page }) => {
                   const selected = event.target.files?.[0]
                   event.target.value = ''
                   if (selected) {
-                    setFile(selected)
-                    setPopup('import')
+                    startFileImport(selected)
                   }
                 }}
               />
+              <Row
+                label={t('historyImportFromLink')}
+                icon={<IconLinkOutline16 />}
+                arrow={false}
+                disabled={busy || importing}
+                onClick={() => setPopup('link')}
+              />
             </Group>
-            {importStatus ? (
-              <p
-                className={styles.caption}
-                role={importStatus.type === 'error' ? 'alert' : 'status'}
-              >
-                {t(importStatus.key, importStatus.params)}
-              </p>
+            {importing || job.phase === 'done' || job.phase === 'error' ? (
+              <Group label={t('historyImportProgressTitle')}>
+                <div className={styles.importState} data-tone={job.phase}>
+                  <div className={styles.importHead}>
+                    <span className={styles.importTitle}>
+                      {job.phase === 'downloading'
+                        ? t('historyImportDownloading', { percent })
+                        : job.phase === 'error'
+                          ? t('historyImportFailed')
+                          : job.phase === 'done'
+                            ? t('historyImported', {
+                                count: (job.finished?.added ?? 0) + (job.finished?.updated ?? 0),
+                              })
+                            : t('historyImportProgress', { percent })}
+                    </span>
+                    <span className={styles.importPercent}>{percent}%</span>
+                  </div>
+                  <div className={styles.importTrack} aria-hidden="true">
+                    <span
+                      style={{
+                        transform: `scaleX(${Math.min(1, Math.max(0.02, job.percent))})`,
+                      }}
+                    />
+                  </div>
+                  <p className={styles.importNote}>
+                    {job.phase === 'error'
+                      ? job.failure
+                      : job.phase === 'done' && job.finished
+                        ? t('historyImportSummary', {
+                            added: job.finished.added,
+                            updated: job.finished.updated,
+                          })
+                        : t('historyImportBackground')}
+                  </p>
+                </div>
+              </Group>
             ) : null}
           </>
         ) : null}
@@ -713,22 +768,14 @@ const Settings = ({ start }: { start: Page }) => {
           </section>
         </div>
       ) : null}
-      {popup === 'logout' || popup === 'delete' || popup === 'import' ? (
+      {popup === 'logout' || popup === 'delete' ? (
         <div className={styles.overlay}>
           <section className={styles.choice} role="dialog" aria-modal="true">
-            <header>
-              {popup === 'logout'
-                ? logout
-                : popup === 'delete'
-                  ? clear
-                  : t('historyImportConfirmTitle')}
-            </header>
+            <header>{popup === 'logout' ? logout : clear}</header>
             <p className={styles.message}>
               {popup === 'logout'
                 ? tr('确认退出当前 API Key？', 'Sign out of this API Key?')
-                : popup === 'delete'
-                  ? t('deleteAllSessionsModalDescription')
-                  : t('historyImportConfirmDescription')}
+                : t('deleteAllSessionsModalDescription')}
             </p>
             <div className={styles.confirmActions}>
               <button className={styles.confirm} disabled={busy} onClick={back}>
@@ -737,14 +784,69 @@ const Settings = ({ start }: { start: Page }) => {
               <button
                 className={styles.confirm}
                 disabled={busy}
-                data-danger={popup !== 'import'}
+                data-danger=""
                 onClick={() => void confirmAction()}
               >
-                {t(popup === 'import' ? 'historyImportConfirm' : 'confirm')}
+                {t('confirm')}
               </button>
             </div>
           </section>
         </div>
+      ) : null}
+      {popup === 'link' ? (
+        <div className={styles.overlay}>
+          <section className={styles.choice} role="dialog" aria-modal="true">
+            <header>{t('historyImportFromLink')}</header>
+            <p className={styles.message}>{t('historyImportLinkHint')}</p>
+            <label className={styles.linkField}>
+              <span>{t('historyImportLinkLabel')}</span>
+              <textarea
+                value={link}
+                rows={3}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                placeholder={t('historyImportLinkPlaceholder')}
+                onChange={(event) => setLink(event.target.value)}
+              />
+            </label>
+            <div className={styles.confirmActions}>
+              <button className={styles.confirm} onClick={back}>
+                {t('cancel')}
+              </button>
+              <button
+                className={styles.confirm}
+                onClick={() => {
+                  const value = link.trim()
+                  if (!value) {
+                    showToast({ key: 'historyImportLinkEmpty', type: 'error' })
+                    return
+                  }
+                  try {
+                    const target = normalizeArchiveUrl(value)
+                    setPopup(null)
+                    setLink('')
+                    startLinkImport(target)
+                  } catch {
+                    showToast({ key: 'historyImportLinkInvalid', type: 'error' })
+                  }
+                }}
+              >
+                {t('historyImportConfirm')}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {avatarFile ? (
+        <AvatarEditor
+          file={avatarFile}
+          onCancel={() => setAvatarFile(null)}
+          onDone={(dataUrl) => {
+            setAvatar(dataUrl)
+            setAvatarFile(null)
+          }}
+        />
       ) : null}
     </section>
   )

@@ -1,8 +1,10 @@
-import { Inflate } from 'fflate'
+﻿import { Inflate } from 'fflate'
+import { blobSource, type ByteSource } from './source.js'
 
-const READ_CHUNK_BYTES = 256 * 1024
-// 控制每轮同步解压的工作量；输出交给调用方保存后才继续读取。
-const INFLATE_CHUNK_BYTES = 8 * 1024
+// 文件读取与解压的分块：一次读 1 MiB，解压时同样按 1 MiB 喂给 fflate。
+// 早先 8 KiB 的粒度会把一次导入切成上千次 async 往返，是导入缓慢的主因。
+const READ_CHUNK_BYTES = 1024 * 1024
+const INFLATE_CHUNK_BYTES = 1024 * 1024
 
 /** ZIP 结构损坏或使用了不支持的特性 */
 export class ArchiveError extends Error {
@@ -16,9 +18,16 @@ const invalid = (): never => {
   throw new ArchiveError()
 }
 
+const asSource = (input: File | ByteSource): ByteSource =>
+  typeof (input as ByteSource).read === 'function' ? (input as ByteSource) : blobSource(input as File)
+
 /** 本地文件头签名 PK\x03\x04，用于在解析前区分 ZIP 与其他文件。 */
-export const isZipFile = async (file: File) => {
-  const bytes = new Uint8Array(await file.slice(0, 4).arrayBuffer())
+export const isZipFile = async (input: File | ByteSource) => {
+  const source = asSource(input)
+  if (source.size < 4) {
+    return false
+  }
+  const bytes = await source.read(0, 4)
   return bytes.length === 4 && bytes.every((byte, index) => byte === [0x50, 0x4b, 3, 4][index])
 }
 
@@ -32,20 +41,29 @@ const crcTable = Uint32Array.from({ length: 256 }, (_, value) => {
   return crc >>> 0
 })
 
-// 系统文件选择器返回的 File 可能来自 content URI。复用相邻读取，避免逐个 ZIP 字段打开文档。
-const createReader = (file: File) => {
+const crc32 = (bytes: Uint8Array) => {
+  const table = crcTable
+  let crc = 0xffffffff
+  for (let index = 0; index < bytes.length; index++) {
+    crc = (crc >>> 8) ^ table[(crc ^ bytes[index]) & 0xff]
+  }
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+// 复用相邻读取，避免逐个 ZIP 字段都发起一次切片读取。
+const createReader = (source: ByteSource) => {
   let offset = 0
-  let buffer = new Uint8Array()
+  let buffer: Uint8Array = new Uint8Array()
   return async (start: number, length: number) => {
-    if (start < 0 || length < 0 || start + length > file.size) {
+    if (start < 0 || length < 0 || start + length > source.size) {
       invalid()
     }
     if (length === 0) {
       return buffer.subarray(0, 0)
     }
     if (start < offset || start + length > offset + buffer.length) {
-      const end = Math.min(file.size, start + Math.max(READ_CHUNK_BYTES, length))
-      buffer = new Uint8Array(await file.slice(start, end).arrayBuffer())
+      const end = Math.min(source.size, start + Math.max(READ_CHUNK_BYTES, length))
+      buffer = await source.read(start, end - start)
       if (buffer.length !== end - start) {
         invalid()
       }
@@ -100,9 +118,10 @@ type Entry = {
 }
 
 const readDirectory = async (
-  fileSize: number,
+  source: ByteSource,
   readBytes: ReadBytes
 ): Promise<{ entries: Entry[]; offset: number }> => {
+  const fileSize = source.size
   if (fileSize < 22) {
     invalid()
   }
@@ -248,86 +267,89 @@ const readEntryOffset = async (readBytes: ReadBytes, entry: Entry, boundary: num
 export type ArchiveEntry = {
   path: string
   size: number
-  stream: AsyncIterable<Uint8Array>
+  /** 读完整个条目：精确分配缓冲区，一次 CRC 校验。不需要的条目不必调用。 */
+  bytes: () => Promise<Uint8Array>
+}
+
+/** 条目在归档中的体积，用于把进度按字节加权（图片占绝大部分）。 */
+export type ArchiveTotals = { entries: number; bytes: number }
+
+/** 只读中央目录，得到条目数与解压后总字节数；用于进度条分母。 */
+export const summarizeArchive = async (input: File | ByteSource): Promise<ArchiveTotals> => {
+  const source = asSource(input)
+  const directory = await readDirectory(source, createReader(source))
+  return {
+    entries: directory.entries.length,
+    bytes: directory.entries.reduce((total, entry) => total + entry.size, 0),
+  }
+}
+
+const readEntryBytes = async (
+  readBytes: ReadBytes,
+  entry: Entry,
+  start: number
+): Promise<Uint8Array> => {
+  const output = new Uint8Array(entry.size)
+  let written = 0
+  const append = (chunk: Uint8Array) => {
+    if (written + chunk.length > output.length) {
+      invalid()
+    }
+    output.set(chunk, written)
+    written += chunk.length
+  }
+  if (entry.method === 0) {
+    for (let offset = 0; offset < entry.compressedSize; offset += READ_CHUNK_BYTES) {
+      append(
+        await readBytes(start + offset, Math.min(READ_CHUNK_BYTES, entry.compressedSize - offset))
+      )
+    }
+  } else {
+    const inflate = new Inflate(append)
+    for (let offset = 0; offset < entry.compressedSize; offset += INFLATE_CHUNK_BYTES) {
+      const end = Math.min(offset + INFLATE_CHUNK_BYTES, entry.compressedSize)
+      inflate.push(
+        await readBytes(start + offset, end - offset),
+        end === entry.compressedSize
+      )
+      if (entry.compressedSize === 0) {
+        break
+      }
+    }
+    if (entry.compressedSize === 0) {
+      inflate.push(new Uint8Array(), true)
+    }
+  }
+  if (written !== entry.size || crc32(output) !== entry.crc) {
+    invalid()
+  }
+  return output
 }
 
 /**
- * 按条目在文件中的物理顺序逐条、逐块解压，跳过目录条目。
- * 调用方必须消费完当前条目的数据，再请求下一个条目。
+ * 按条目在文件中的物理顺序逐条产出；条目数据在调用 bytes() 时才解压，
+ * 因此跳过不关心的条目不再需要先下载并解压一遍。
  */
-export async function* readArchive(file: File): AsyncGenerator<ArchiveEntry> {
-  const readBytes = createReader(file)
-  const directory = await readDirectory(file.size, readBytes)
+export async function* readArchive(input: File | ByteSource): AsyncGenerator<ArchiveEntry> {
+  const source = asSource(input)
+  const readBytes = createReader(source)
+  const directory = await readDirectory(source, readBytes)
   for (const [index, entry] of directory.entries.entries()) {
-    const boundary = directory.entries[index + 1]?.offset ?? directory.offset
-    const start = await readEntryOffset(readBytes, entry, boundary)
     if (entry.path.endsWith('/')) {
       continue
     }
-    let completed = false
-    const stream = async function* (): AsyncGenerator<Uint8Array> {
-      let written = 0
-      let crc = 0xffffffff
-      const pending: Uint8Array[] = []
-      const append = (chunk: Uint8Array) => {
-        written += chunk.length
-        if (written > entry.size) {
-          invalid()
-        }
-        for (const byte of chunk) {
-          crc = (crc >>> 8) ^ crcTable[(crc ^ byte) & 0xff]
-        }
-        if (chunk.length) {
-          pending.push(chunk)
-        }
-      }
-      const inflate = entry.method === 8 ? new Inflate(append) : null
-      for (let offset = 0; offset < entry.compressedSize; offset += READ_CHUNK_BYTES) {
-        const chunk = await readBytes(
-          start + offset,
-          Math.min(READ_CHUNK_BYTES, entry.compressedSize - offset)
-        )
-        if (!inflate) {
-          append(chunk)
-          yield* pending.splice(0)
-          continue
-        }
-        for (let cursor = 0; cursor < chunk.length; cursor += INFLATE_CHUNK_BYTES) {
-          const end = Math.min(cursor + INFLATE_CHUNK_BYTES, chunk.length)
-          inflate.push(chunk.subarray(cursor, end), offset + end === entry.compressedSize)
-          // yield 暂停解压，等待调用方完成异步写入；不缓存整个条目。
-          yield* pending.splice(0)
-        }
-      }
-      if (inflate && entry.compressedSize === 0) {
-        inflate.push(new Uint8Array(), true)
-        yield* pending.splice(0)
-      }
-      if (written !== entry.size || (crc ^ 0xffffffff) >>> 0 !== entry.crc) {
-        invalid()
-      }
-      completed = true
-    }
-    yield { path: entry.path, size: entry.size, stream: stream() }
-    if (!completed) {
-      invalid()
+    const boundary = directory.entries[index + 1]?.offset ?? directory.offset
+    const start = await readEntryOffset(readBytes, entry, boundary)
+    yield {
+      path: entry.path,
+      size: entry.size,
+      bytes: () => readEntryBytes(readBytes, entry, start),
     }
   }
 }
 
-/** 读出整个条目：会话 JSON 需要完整解析，图片需要识别类型后整张保存。 */
+/** 读出整个条目为 Blob：会话 JSON 需要完整解析，图片需要整张保存。 */
 export const readEntry = async (entry: ArchiveEntry): Promise<Blob> => {
-  const parts: Blob[] = []
-  for await (const chunk of entry.stream) {
-    parts.push(new Blob([chunk as Uint8Array<ArrayBuffer>]))
-  }
-  return new Blob(parts)
-}
-
-/** 不需要的条目也要读完，以校验大小与 CRC。 */
-export const skipEntry = async (entry: ArchiveEntry): Promise<void> => {
-  const reader = entry.stream[Symbol.asyncIterator]()
-  while (!(await reader.next()).done) {
-    // 丢弃数据。
-  }
+  const bytes = await entry.bytes()
+  return new Blob([bytes as Uint8Array<ArrayBuffer>])
 }

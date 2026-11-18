@@ -1,4 +1,4 @@
-.anchor {
+﻿.anchor {
   display: inline-flex;
 }
 
@@ -27,8 +27,17 @@
   color: var(--dsw-alias-label-primary);
   cursor: pointer;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 120ms ease-out,
+    transform 220ms linear(0, 0.4 12%, 1.04 38%, 1);
 
   &:hover {
+    background-color: var(--dsw-alias-interactive-bg-hover);
+  }
+
+  &:active {
+    transform: scale(0.975);
     background-color: var(--dsw-alias-interactive-bg-hover);
   }
 }
@@ -43,5 +52,55 @@
 
   &:hover {
     background-color: var(--dsw-alias-interactive-bg-hover-danger);
+  }
+}
+
+/* 官方会话菜单：更宽的行高、20px 图标、项间细分隔线 */
+.roomy {
+  min-width: 188px;
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 10%),
+    0 14px 38px rgb(0 0 0 / 20%);
+  transform-origin: var(--menu-origin, top right);
+  animation: menu-pop 260ms linear(0, 0.32 10%, 0.86 32%, 1.06 52%, 0.99 74%, 1);
+
+  .option {
+    gap: 14px;
+    padding: 0 18px;
+    height: 56px;
+    border-radius: 0;
+    font-size: 16.5px;
+    line-height: 1;
+    letter-spacing: 0.2px;
+
+    &:active {
+      transform: none;
+      background-color: color-mix(in srgb, currentColor 12%, transparent);
+    }
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    opacity: 0.92;
+  }
+}
+
+.roomy .option:active {
+  background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent);
+}
+
+.divided {
+  border-top: 1px solid var(--dsw-alias-border-l2);
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.86) translateY(-6px);
   }
 }

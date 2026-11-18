@@ -1,0 +1,86 @@
+﻿/* 顶部导入状态条：紧贴系统状态栏下沿，跨页面常驻。 */
+.bar {
+  position: fixed;
+  top: var(--android-status-inset, 0px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-3) 92%, transparent);
+  backdrop-filter: blur(14px);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transform: translateY(-100%);
+  transition: transform 340ms linear(0, 0.28 6%, 0.72 16%, 1.06 26%, 1.02 40%, 0.99 58%, 1);
+}
+
+.bar[data-shown='true'] {
+  transform: translateY(0);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--dsw-alias-brand-text);
+  animation: dot-pulse 1.4s ease-in-out infinite;
+}
+
+[data-phase='done'] .dot {
+  background: #34c759;
+  animation: none;
+}
+
+@keyframes dot-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--dsw-alias-label-primary) 55%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.chevron {
+  display: flex;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: color-mix(in srgb, #4d6bfe 22%, transparent);
+
+  span {
+    display: block;
+    height: 100%;
+    transform-origin: left center;
+    background: var(--dsw-alias-brand-text);
+    transition: transform 320ms linear(0, 0.32 8%, 0.79 20%, 1.03 30%, 1.01 46%, 1);
+  }
+}

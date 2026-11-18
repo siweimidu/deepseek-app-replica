@@ -30,9 +30,17 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.window.OnBackInvokedDispatcher;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -57,6 +65,9 @@ public final class MainActivity extends Activity {
     private ImageSave imageSave;
     private NativeRecorder recorder;
     private final ExecutorService photoExecutor = Executors.newSingleThreadExecutor();
+    /** 导出包下载缓存：令牌 -> 文件，导入结束后由前端调用释放。 */
+    private final Map<String, File> downloads = new ConcurrentHashMap<>();
+    private final ExecutorService downloadExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     public void onCreate(Bundle state) {
@@ -137,6 +148,119 @@ public final class MainActivity extends Activity {
             && url.getPort() == -1;
     }
 
+    private File downloadFile(String token) {
+        return new File(getCacheDir(), "history-" + token + ".zip");
+    }
+
+    private static String escapeJs(String value) {
+        return value == null ? "" : value.replace("\\", "\\\\").replace("'", "\\'")
+            .replace("\n", " ").replace("\r", " ");
+    }
+
+    /** 下载进度与结果都以自定义事件回传，前端据此显示进度条。 */
+    private void emitDownload(String token, String state, long loaded, long total,
+                              String url, String message) {
+        String script = "window.dispatchEvent(new CustomEvent('android-download',{detail:{"
+            + "token:'" + escapeJs(token) + "',state:'" + state + "',loaded:" + loaded
+            + ",total:" + total + ",url:'" + escapeJs(url) + "',message:'" + escapeJs(message)
+            + "'}}))";
+        runOnUiThread(() -> webView.evaluateJavascript(script, null));
+    }
+
+    /** 只把缓存里的导出包暴露给页面；支持 Range，前端因此可以按需流式读取。 */
+    private WebResourceResponse serveDownload(Uri url, String range) {
+        File file = downloads.get(url.getLastPathSegment());
+        if (file == null || !file.isFile()) {
+            return new WebResourceResponse("text/plain", "UTF-8", 404, "Not Found",
+                Map.of(), new ByteArrayInputStream(new byte[0]));
+        }
+        long size = file.length();
+        long start = 0;
+        long end = size - 1;
+        boolean partial = false;
+        if (range != null && range.startsWith("bytes=")) {
+            String[] bounds = range.substring(6).split("-", -1);
+            try {
+                if (!bounds[0].isEmpty()) start = Long.parseLong(bounds[0]);
+                if (bounds.length > 1 && !bounds[1].isEmpty()) end = Long.parseLong(bounds[1]);
+            } catch (NumberFormatException ignored) {
+                return new WebResourceResponse("text/plain", "UTF-8", 416,
+                    "Range Not Satisfiable", Map.of(), new ByteArrayInputStream(new byte[0]));
+            }
+            end = Math.min(end, size - 1);
+            partial = true;
+        }
+        if (start < 0 || end < start || start >= size) {
+            return new WebResourceResponse("text/plain", "UTF-8", 416, "Range Not Satisfiable",
+                Map.of(), new ByteArrayInputStream(new byte[0]));
+        }
+        int length = (int) (end - start + 1);
+        byte[] body = new byte[length];
+        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+            raf.seek(start);
+            raf.readFully(body);
+        } catch (IOException error) {
+            return new WebResourceResponse("text/plain", "UTF-8", 500, "Internal Error",
+                Map.of(), new ByteArrayInputStream(new byte[0]));
+        }
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Accept-Ranges", "bytes");
+        headers.put("Cache-Control", "no-store");
+        headers.put("Content-Length", String.valueOf(length));
+        if (partial) {
+            headers.put("Content-Range", "bytes " + start + "-" + end + "/" + size);
+            return new WebResourceResponse("application/zip", null, 206, "Partial Content",
+                headers, new ByteArrayInputStream(body));
+        }
+        return new WebResourceResponse("application/zip", null, 200, "OK", headers,
+            new ByteArrayInputStream(body));
+    }
+
+    /** 后台线程下载：绕开 WebView 的跨域限制，并把已下载字节数实时回报页面。 */
+    private void startDownload(String token, String address) {
+        File target = downloadFile(token);
+        downloadExecutor.execute(() -> {
+            HttpURLConnection connection = null;
+            try {
+                connection = (HttpURLConnection) new URL(address).openConnection();
+                connection.setConnectTimeout(20000);
+                connection.setReadTimeout(30000);
+                connection.setInstanceFollowRedirects(true);
+                connection.setRequestProperty("User-Agent", "DeepSleep");
+                int status = connection.getResponseCode();
+                if (status < 200 || status >= 300) {
+                    emitDownload(token, "error", 0, 0, "", "HTTP " + status);
+                    return;
+                }
+                long total = connection.getContentLengthLong();
+                long loaded = 0;
+                long reported = 0;
+                try (InputStream input = connection.getInputStream();
+                     FileOutputStream output = new FileOutputStream(target)) {
+                    byte[] buffer = new byte[64 * 1024];
+                    for (int read; (read = input.read(buffer)) > 0; ) {
+                        output.write(buffer, 0, read);
+                        loaded += read;
+                        if (loaded - reported >= 128 * 1024) {
+                            reported = loaded;
+                            emitDownload(token, "progress", loaded, total, "", "");
+                        }
+                    }
+                }
+                emitDownload(token, "progress", loaded, total, "", "");
+                emitDownload(token, "ready", loaded, loaded,
+                    "https://" + ASSET_HOST + "/__download/" + token, "");
+            } catch (IOException error) {
+                //noinspection ResultOfMethodCallIgnored
+                target.delete();
+                downloads.remove(token);
+                emitDownload(token, "error", 0, 0, "", String.valueOf(error.getMessage()));
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+        });
+    }
+
     private final class AppPage extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -159,6 +283,9 @@ public final class MainActivity extends Activity {
             Uri url = request.getUrl();
             if (!isBundled(url)) return null;
             String path = url.getPath();
+            if (path != null && path.startsWith("/__download/")) {
+                return serveDownload(url, request.getRequestHeaders().get("Range"));
+            }
             if ("/recording.wav".equals(path)) {
                 WebResourceResponse audio = recorder.takeWav();
                 if (audio != null) return audio;
@@ -453,5 +580,28 @@ public final class MainActivity extends Activity {
 
         @JavascriptInterface
         public double recordingLevel() { return recorder.level(); }
+
+        @JavascriptInterface
+        public String startHistoryDownload(String address) {
+            Uri uri = Uri.parse(address == null ? "" : address.trim());
+            String scheme = uri.getScheme();
+            if (uri.getHost() == null || (!"https".equals(scheme) && !"http".equals(scheme))) {
+                return "";
+            }
+            String token = Long.toHexString(System.nanoTime());
+            File target = downloadFile(token);
+            downloads.put(token, target);
+            startDownload(token, uri.toString());
+            return token;
+        }
+
+        @JavascriptInterface
+        public void releaseHistoryDownload(String token) {
+            File file = downloads.remove(token);
+            if (file != null) {
+                //noinspection ResultOfMethodCallIgnored
+                file.delete();
+            }
+        }
     }
 }

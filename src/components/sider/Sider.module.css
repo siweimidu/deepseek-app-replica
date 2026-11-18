@@ -1,4 +1,4 @@
-.sider {
+﻿.sider {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -329,17 +329,36 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 48px;
+  height: 64px;
   flex-shrink: 0;
+  padding-left: 4px;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
 
-  button {
-    background: var(--dsw-alias-bg-base);
-    box-shadow: 0 1px 8px #0002;
+/* 官方用一个灰色圆底 + 叉号关闭多选 */
+.closeCircle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent);
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+  transition: transform 260ms linear(0, 0.42 14%, 1.06 42%, 1);
+
+  &:active {
+    transform: scale(0.88);
   }
 }
 
 .selectionActions {
   display: flex;
+  align-items: center;
   width: 100%;
   border-top: 1px solid var(--dsw-alias-border-l2);
 
@@ -348,19 +367,31 @@
     flex: 1;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    height: 42px;
+    gap: 8px;
+    height: 52px;
     border: 0;
     background: transparent;
     color: inherit;
     font: inherit;
-    font-size: 15px;
+    font-size: 16px;
+    transition: transform 260ms linear(0, 0.42 14%, 1.06 42%, 1);
+
+    &:active:not(:disabled) {
+      transform: scale(0.96);
+    }
 
     &:disabled {
       opacity: 0.35;
     }
   }
 }
+
+.selectionDivider {
+  width: 1px;
+  height: 22px;
+  background: var(--dsw-alias-border-l2);
+}
+
 
 .search {
   display: flex;
@@ -383,5 +414,44 @@
     background: transparent;
     font: inherit;
     font-size: 16px;
+  }
+}
+
+/* ---- 底部账号行：可点击态（官方按下时整行变亮） ---- */
+.settingsLabel {
+  flex: 1;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 底部账号行：按下时整行变亮（对齐官方按下态） */
+[data-android] .mobile .settings {
+  transition:
+    background-color 150ms ease-out,
+    transform 300ms linear(0, 0.44 12%, 1.05 42%, 1);
+
+  &:active {
+    background-color: color-mix(in srgb, var(--dsw-alias-label-primary) 11%, transparent);
+    transform: scale(0.985);
+  }
+}
+
+[data-android] .mobile .settingsIcon[data-avatar] {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
+  color: color-mix(in srgb, var(--dsw-alias-label-primary) 78%, transparent);
+
+  svg {
+    width: 24px;
+    height: 24px;
   }
 }

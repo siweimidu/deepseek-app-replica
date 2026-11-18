@@ -71,7 +71,7 @@
 .select {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   width: 100%;
   height: 48px;
   padding: 0 7px;
@@ -81,19 +81,30 @@
   font: inherit;
   font-size: 16px;
   text-align: left;
+  cursor: pointer;
+}
 
-  > span {
-    box-sizing: border-box;
-    width: 19px;
-    height: 19px;
-    border: 1.5px solid #c9c9c9;
-    border-radius: 50%;
-  }
+/* 官方多选是空心圆勾选框，选中后填充品牌色并显示对勾 */
+.checkbox {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid color-mix(in srgb, var(--dsw-alias-label-primary) 42%, transparent);
+  border-radius: 50%;
+  color: #fff;
+  transition:
+    background-color 160ms ease-out,
+    border-color 160ms ease-out,
+    transform 320ms linear(0, 0.5 12%, 1.12 42%, 0.98 64%, 1);
+}
 
-  &[aria-checked='true'] > span {
-    border-color: var(--dsw-alias-brand-text);
-    background: radial-gradient(circle, var(--dsw-alias-brand-text) 51%, transparent 55%);
-  }
+.checked .checkbox {
+  border-color: var(--dsw-alias-brand-text);
+  background: var(--dsw-alias-brand-text);
+  transform: scale(1.04);
 }
 
 .renameInput {

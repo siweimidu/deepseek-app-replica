@@ -1,6 +1,8 @@
 import { formatDate } from '../../utils/format.js'
 import * as db from './db.js'
-import { replaceHistory, useChatStore } from './store.js'
+import type { ImportProgress } from './history/importArchive.js'
+import type { ByteSource } from './history/source.js'
+import { applyImportedHistory, replaceHistory, useChatStore, type ImportOutcome } from './store.js'
 import type { Session } from './types.js'
 
 export { BackupError } from './history/errors.js'
@@ -40,14 +42,32 @@ export const exportHistory = (): Promise<{ name: string; blob: Blob }> =>
   })
 
 /**
- * 确认覆盖后调用：流式校验 ZIP 并写入暂存，成功后才停止生成并替换原有历史。
- * 返回导入的会话数。
+ * 导入导出包：流式校验 ZIP 并写入暂存，成功后才合并进正式历史。
+ * 已存在的会话按 ID 补齐标题与时间，不会新建、不会重复。
  */
-export const importHistory = (file: File): Promise<number> =>
+export const importHistory = (
+  input: File | ByteSource,
+  onProgress?: (progress: ImportProgress) => void
+): Promise<ImportOutcome> =>
   enqueueBackup(async () => {
     const { importArchive } = await import('./history/importArchive.js')
-    return replaceHistory(() => importArchive(file))
+    return applyImportedHistory(() => importArchive(input, onProgress))
   })
+
+/** 从导出链接导入：先由原生下载到缓存，再走与选文件完全相同的导入流程。 */
+export const importHistoryFromUrl = async (
+  url: string,
+  onProgress?: (progress: ImportProgress) => void,
+  onDownload?: (loaded: number, total: number) => void
+): Promise<ImportOutcome> => {
+  const { openLinkSource } = await import('./history/linkImport.js')
+  const link = await openLinkSource(url, onDownload ?? (() => undefined))
+  try {
+    return await importHistory(link.source, onProgress)
+  } finally {
+    link.release()
+  }
+}
 
 /** 确认删除后调用：以空历史原子替换全部本地会话与附件，保留 API Key 和其他设置。 */
 export const clearHistory = (): Promise<void> =>

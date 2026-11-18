@@ -406,7 +406,7 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
     initTask = undefined
     sessionLoads.clear()
     await waitForIdle()
-    const summaries = await db.commitStaging()
+    const { summaries } = await db.commitStaging('replace')
     sessionAccess.clear()
     unsavedSessions.clear()
     pendingFiles.clear()
@@ -439,6 +439,68 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
     }
   }
 }
+
+export type ImportedHistory = { sessions: number; images: number }
+
+export type ImportOutcome = ImportedHistory & { added: number; updated: number }
+
+/**
+ * 导入历史：写入暂存 → 暂停生成 → 按会话 ID 合并进正式数据。
+ * 与整包替换不同，这里不清空其他会话，也不切走当前会话；
+ * 同一份导出包重复导入只补齐标题、时间与消息，不新建、不重复。
+ */
+export const applyImportedHistory = async (write: () => Promise<ImportedHistory>) => {
+  if (replacingHistory) {
+    throw new Error('History import is already in progress')
+  }
+  replacingHistory = true
+  try {
+    await db.clearStaging()
+    const result = await write()
+    set({ importingHistory: true })
+    for (const controller of Object.values(get().streaming)) {
+      controller.abort()
+    }
+    await Promise.all(deletionTasks)
+    historyEpoch += 1
+    initTask = undefined
+    sessionLoads.clear()
+    await waitForIdle()
+    const commit = await db.commitStaging('merge')
+    sessionAccess.clear()
+    unsavedSessions.clear()
+    pendingFiles.clear()
+    // 合并后的会话可能多出消息，清空详情缓存让当前打开的那条重新读取。
+    set({
+      ready: true,
+      initError: false,
+      sessions: sortSessions(commit.summaries),
+      sessionCache: {},
+      sessionLoadErrors: {},
+      sessionSaveErrors: {},
+    })
+    const { activeId } = get()
+    if (activeId !== null) {
+      void ensureSessionLoaded(activeId)
+    }
+    return { ...result, added: commit.added, updated: commit.updated }
+  } catch (error) {
+    await db.clearStaging().catch(db.reportStorageError('clear unfinished history import'))
+    throw error
+  } finally {
+    replacingHistory = false
+    if (get().importingHistory) {
+      set({ importingHistory: false })
+      retrySaveSessions()
+      if (!get().ready) {
+        void initChat()
+      }
+    }
+  }
+}
+
+/** 会话详情弹窗需要消息数：按需加载，已缓存时直接返回。 */
+export const loadSession = (id: string) => ensureSessionLoaded(id)
 
 export const newChat = () => {
   if (!get().importingHistory) {

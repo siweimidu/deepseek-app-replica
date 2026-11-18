@@ -10,7 +10,7 @@
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="DeepSeek Replica"
+        android:label="DeepSleep"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
         <provider

@@ -3,14 +3,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { android } from '../../app/android.js'
 import { useTranslate } from '../../i18n/index.js'
 import {
+  IconCloseOutline16,
+  IconEllipsisOutline16,
   IconPanelLeftOutline16,
   IconSearchOutline16,
   IconSettingsOutline16,
-  IconCloseOutline16,
-  IconEllipsisOutline16,
   IconTrashOutline16,
   NewChatIcon,
 } from '../base/icons.js'
+import { IconPinOutline20 } from '../base/appIcons.js'
 import { setPinnedSessions, setSiderCollapsed, useSettings } from '../../services/settings.js'
 import { groupSessions } from '../../services/chat/sessionGroups.js'
 import { newChat, removeSession, useChatStore } from '../../services/chat/store.js'
@@ -21,9 +22,17 @@ import { Modal } from '../base/Modal.js'
 import { showToast } from '../base/toastState.js'
 import { openSettings } from '../settings/settingsDialogState.js'
 import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
+import { SessionDetailSheet } from './SessionDetailSheet.js'
 import { SessionItem } from './SessionItem.js'
 import { useSessionSearch } from './useSessionSearch.js'
 import styles from './Sider.module.css'
+
+const PersonIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <circle cx="12" cy="8" r="4.15" />
+    <path d="M3 23a9 7 0 0 1 18 0z" />
+  </svg>
+)
 
 /** 展开的侧边栏：名称与收起按钮、开启新对话、按时间分组的会话列表、底部设置；移动端放在抽屉里，收起按钮关闭抽屉 */
 export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
@@ -31,12 +40,14 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const sessions = useChatStore((state) => state.sessions)
   const activeId = useChatStore((state) => state.activeId)
   const pinnedIds = useSettings((state) => state.pinnedSessions)
+  const avatar = useSettings((state) => state.avatar)
   const androidDrawer = Boolean(mobile && android)
   const [query, setQuery] = useState('')
   const matches = useSessionSearch(query, sessions)
   const [now, setNow] = useState(Date.now)
   const [selecting, setSelecting] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(() => new Set())
+  const [detail, setDetail] = useState<SessionSummary | null>(null)
   const [pinning, setPinning] = useState<{ ids: Set<string>; unpin: boolean } | null>(null)
   const unpin = checked.size > 0 && [...checked].every((id) => pinnedIds.includes(id))
   const groups = useMemo(() => {
@@ -60,6 +71,15 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
     setSelecting(false)
     setChecked(new Set())
     setPinning(null)
+  }
+
+  const togglePin = (id: string) => {
+    const pinned = pinnedIds.includes(id)
+    setPinnedSessions(pinned ? pinnedIds.filter((item) => item !== id) : [...pinnedIds, id])
+    showToast({
+      key: pinned ? 'androidUnpinnedChats' : 'androidPinnedChats',
+      params: { count: 1 },
+    })
   }
 
   useEffect(() => {
@@ -93,18 +113,22 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   }, [])
 
   return (
-    <div className={clsx(styles.sider, mobile && styles.mobile)}>
+    <div className={clsx(styles.sider, mobile && styles.mobile, androidDrawer && styles.drawerSider)}>
       {androidDrawer && selecting ? (
         <div className={styles.selectionHeader}>
-          {checked.size
-            ? t('androidSelectedChats', { count: checked.size })
-            : t('androidSelectChats')}
-          <IconButton
-            tone="primary"
-            icon={<IconCloseOutline16 />}
+          <span>
+            {checked.size
+              ? t('androidSelectedChats', { count: checked.size })
+              : t('androidSelectChats')}
+          </span>
+          <button
+            type="button"
+            className={styles.closeCircle}
             aria-label={t('close')}
             onClick={closeSelection}
-          />
+          >
+            <IconCloseOutline16 />
+          </button>
         </div>
       ) : androidDrawer ? (
         <label className={styles.search}>
@@ -145,27 +169,6 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         </>
       )}
       <div className={styles.listWrap}>
-        {androidDrawer && !selecting ? (
-          <IconButton
-            className={styles.selectChats}
-            icon={
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                fill="none"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <circle cx="4" cy="5" r="1.6" />
-                <circle cx="4" cy="13" r="1.6" />
-                <path d="M8 5h7M8 13h7" strokeWidth="1.2" />
-              </svg>
-            }
-            aria-label={t('androidSelectChats')}
-            onClick={() => setSelecting(true)}
-          />
-        ) : null}
         <div className={styles.list}>
           {groups.map((group) => (
             <div key={group.key} className={styles.section}>
@@ -175,6 +178,13 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
                   key={session.id}
                   session={session}
                   active={session.id === activeId}
+                  pinned={pinnedIds.includes(session.id)}
+                  onPin={() => togglePin(session.id)}
+                  onDetail={() => setDetail(session)}
+                  onSelectMode={() => {
+                    setSelecting(true)
+                    setChecked(new Set([session.id]))
+                  }}
                   onDelete={() => setDeleting([session])}
                   selection={
                     selecting
@@ -208,18 +218,10 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
               disabled={!checked.size}
               onClick={() => setPinning({ ids: checked, unpin })}
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                fill="none"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path d="m6 7 4-4 3 3-4 4-1 3-2-2-3 3-1-1 3-3-2-2z" />
-              </svg>
+              <IconPinOutline20 />
               {t(unpin ? 'androidUnpin' : 'androidPinned')}
             </button>
+            <span className={styles.selectionDivider} aria-hidden="true" />
             <button
               type="button"
               disabled={!checked.size}
@@ -234,20 +236,15 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
             type="button"
             className={styles.settings}
             aria-label={t('settings')}
-            onClick={() => openSettings('general')}
+            onClick={() => openSettings(androidDrawer ? 'data' : 'general')}
           >
-            <span className={styles.settingsIcon}>
+            <span className={styles.settingsIcon} data-avatar={androidDrawer ? '' : undefined}>
               {androidDrawer ? (
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <circle cx="12" cy="8" r="4.15" />
-                  <path d="M3 23a9 7 0 0 1 18 0z" />
-                </svg>
+                avatar ? (
+                  <img className={styles.avatarImage} src={avatar} alt="" />
+                ) : (
+                  <PersonIcon />
+                )
               ) : (
                 <IconSettingsOutline16 />
               )}
@@ -259,6 +256,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
           </button>
         )}
       </div>
+      {detail ? <SessionDetailSheet session={detail} onClose={() => setDetail(null)} /> : null}
       {pinning ? (
         <Modal
           title={t(pinning.unpin ? 'androidUnpinConfirm' : 'androidPinConfirm', {

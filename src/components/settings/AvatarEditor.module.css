@@ -1,0 +1,96 @@
+/* 头像裁切：铺满屏幕的取景层，颜色跟随主题。 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 980;
+  display: flex;
+  flex-direction: column;
+  background: var(--dsw-alias-bg-base);
+  animation: fade-in 180ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+}
+
+.heading {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.action {
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--dsw-alias-label-primary) 62%, transparent);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 240ms linear(0, 0.42 14%, 1.06 42%, 1);
+
+  &[data-primary] {
+    color: var(--dsw-alias-brand-text);
+    font-weight: 600;
+  }
+
+  &:active {
+    transform: scale(0.93);
+  }
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+/* 取景框：圆圈内显示图片，四周压暗突出裁切范围 */
+.hole {
+  position: absolute;
+  width: 288px;
+  height: 288px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 58%);
+  outline: 1px solid color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.image {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+  z-index: 1;
+}
+
+.hint {
+  margin: 0 0 calc(24px + env(safe-area-inset-bottom));
+  padding: 0 24px;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: color-mix(in srgb, var(--dsw-alias-label-primary) 52%, transparent);
+}

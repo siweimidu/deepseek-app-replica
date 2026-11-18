@@ -1,6 +1,6 @@
 <div align="center">
 
-# DeepSeek App Replica
+# DeepSleep
 
 尽可能复刻 DeepSeek 官方手机端（Android）交互与视觉体验的客户端
 
@@ -30,13 +30,26 @@
 2. 在 API 配置中填入你在 DeepSeek 开放平台申请的 API Key。
 3. 返回主页面即可开始对话，支持深度思考、联网搜索、语音对讲与相册多模态等功能。
 
+## 导入历史对话
+
+数据管理里提供两个入口，效果完全一致，区别只是 ZIP 的来源：
+
+- **选择导出文件（.zip）**：从系统文件选择器挑一个 DeepSeek 导出的压缩包。
+- **从链接导入**：直接粘贴 DeepSeek 官网给出的下载链接，App 自己下载、解压并导入，不用再去文件夹里找 ZIP。
+
+导入行为：
+
+- 进度显示在页面顶部的状态条与「导入进度」卡片里；离开数据管理页后任务继续在后台跑，进度条跟随。
+- 已经导入过的对话再次导入时按会话 ID 合并：用导出包里的标题、创建时间、更新时间与消息补齐，**不会新建、不会重复**，只会显示「新增 0 个，更新 N 个」。
+- 会话长按 → 「详情」可以看到来源、创建时间（导入时取导出包里的原始时间）、最后更新、消息数与会话 ID。
+
 ---
 
 ## 技术架构
 
 项目采用 Android 原生容器承载高性能 Web 交互内核的架构：
 
-- **Android 原生层**：基于 Java 17 与 Android SDK 37（最低兼容 Android 11 / API 30）。通过 WebView 加载本地构建产物，并封装系统级能力：API Key 经 Android Keystore 加密存储、原生麦克风录音采集（`AudioRecord`）、系统相册快速预取以及独立的网页浏览器（`SourceBrowserActivity`）。
+- **Android 原生层**：基于 Java 17 与 Android SDK 36（最低兼容 Android 11 / API 30）。通过 WebView 加载本地构建产物，并封装系统级能力：API Key 经 Android Keystore 加密存储、原生麦克风录音采集（`AudioRecord`）、系统相册快速预取、导出包后台下载（`__download` 同源分发，带 Range 支持）以及独立的网页浏览器（`SourceBrowserActivity`）。
 - **Web 交互层**：React 18 + TypeScript + Zustand 状态管理，基于 CSS Modules 进行交互细节调优，引入 KaTeX、Mermaid 与 Prism.js 提供排版渲染。
 - **构建系统**：Rspack 2 高速打包，与 Gradle `buildWeb` 构建任务无缝联动。
 
@@ -47,12 +60,12 @@
 ### 环境要求
 - Node.js 22.12+ 与 pnpm
 - JDK 17+
-- Android SDK Platform 37
+- Android SDK Platform 36
 
 ### 构建步骤
 ```powershell
 # 1. 克隆代码并安装前端依赖
-git clone https://github.com/LiJiaHua1024/deepseek-app-replica.git
+git clone https://github.com/siweimidu/deepseek-app-replica.git
 cd deepseek-app-replica
 pnpm install
 

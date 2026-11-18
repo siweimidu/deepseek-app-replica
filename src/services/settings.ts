@@ -24,6 +24,8 @@ type Settings = {
   fontSize: number | null
   foldThinking: boolean
   pinnedSessions: string[]
+  /** 用户上传的头像（圆形裁切后的 data URL），为空时显示默认人形图标 */
+  avatar: string | null
 }
 
 const KEYS = {
@@ -39,6 +41,7 @@ const KEYS = {
   fontSize: 'replica:font-size',
   foldThinking: 'replica:fold-thinking',
   pinnedSessions: 'replica:pinned-sessions',
+  avatar: 'deepsleep:avatar',
 } as const
 
 const read = (key: string) => {
@@ -132,7 +135,14 @@ export const useSettings = create<Settings>(() => ({
   fontSize: initialFontSize(),
   foldThinking: read(KEYS.foldThinking) !== 'false',
   pinnedSessions: initialPinnedSessions(),
+  avatar: read(KEYS.avatar),
 }))
+
+export const setAvatar = (avatar: string | null) => {
+  // 头像只在本地保存，超出配额时保留上一次成功保存的图。
+  write(KEYS.avatar, avatar)
+  useSettings.setState({ avatar: read(KEYS.avatar) })
+}
 
 export const setPinnedSessions = (pinnedSessions: string[]) => {
   write(KEYS.pinnedSessions, JSON.stringify(pinnedSessions))

@@ -1,0 +1,125 @@
+/* 会话详情：官方是盖住下半屏的底部弹层，顶部圆角 + 抓手。全部使用主题变量，深浅色自适应。 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  background: rgb(0 0 0 / 45%);
+  opacity: 0;
+  transition: opacity 220ms ease-out;
+}
+
+.overlayShown {
+  opacity: 1;
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  max-height: 88%;
+  padding: 10px 16px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow: 0 -14px 44px rgb(0 0 0 / 16%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transform: translateY(100%);
+  transition: transform 420ms linear(0, 0.18 10%, 0.52 24%, 0.82 38%, 1.02 56%, 1.01 70%, 1);
+}
+
+.sheetShown {
+  transform: translateY(0);
+}
+
+.handle {
+  width: 44px;
+  height: 4px;
+  margin: 4px auto 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 24%, transparent);
+}
+
+.title {
+  margin: 0 4px 18px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: 0.2px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.card {
+  border-radius: 18px;
+  background: var(--dsw-alias-bg-skeleton);
+  padding: 4px 0;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 17px 18px 17px 16px;
+
+  & + & {
+    border-top: 1px solid var(--dsw-alias-border-l1);
+  }
+}
+
+.rowIcon {
+  display: flex;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--dsw-alias-label-primary) 52%, transparent);
+}
+
+.rowBody {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rowLabel {
+  font-size: 13.5px;
+  line-height: 19px;
+  color: color-mix(in srgb, var(--dsw-alias-label-primary) 52%, transparent);
+}
+
+.rowValue {
+  font-size: 16.5px;
+  line-height: 24px;
+  color: var(--dsw-alias-label-primary);
+  word-break: break-all;
+}
+
+.mono {
+  font-family: var(--dsw-font-mono, ui-monospace, 'SF Mono', Menlo, Consolas, monospace);
+  font-size: 14.5px;
+  letter-spacing: 0.2px;
+}
+
+.copy {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin: 1px -4px 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: color-mix(in srgb, var(--dsw-alias-label-primary) 58%, transparent);
+  cursor: pointer;
+  transition: transform 260ms linear(0, 0.45 14%, 1.05 42%, 1);
+
+  &:active {
+    transform: scale(0.88);
+    background: var(--dsw-alias-bg-layer-3);
+  }
+}

@@ -17,6 +17,9 @@ type AndroidBridge = {
   requestRecording: () => void
   finishRecording: (keep: boolean) => boolean
   recordingLevel: () => number
+  /** 开始下载导出包，返回本次下载的令牌；空字符串表示拒绝。 */
+  startHistoryDownload: (url: string) => string
+  releaseHistoryDownload: (token: string) => void
 }
 
 export const android = (window as Window & { DeepSeekAndroid?: AndroidBridge }).DeepSeekAndroid
@@ -89,4 +92,56 @@ export const saveAndroidImage = async (name: string, blob: Blob) => {
   if (!device.finishImageSave(true)) {
     throw new Error('Unable to save the image')
   }
+}
+
+/** 原生下载器回报的事件：progress 按已下载字节推进，ready 时给出同源地址。 */
+type AndroidDownloadEvent = {
+  token: string
+  state: 'progress' | 'ready' | 'error'
+  loaded: number
+  total: number
+  url: string
+  message: string
+}
+
+export type AndroidDownload = { url: string; release: () => void }
+
+/**
+ * 交给原生下载：WebView 里的 fetch 受 CORS 限制，DeepSeek 导出链接不带
+ * 跨域头，因此由 Java 侧下载到缓存目录，再以 appassets 同源地址交给前端读取。
+ */
+export const downloadAndroidHistory = (
+  url: string,
+  onProgress: (loaded: number, total: number) => void
+): Promise<AndroidDownload> => {
+  const device = android
+  if (!device?.startHistoryDownload) {
+    throw new Error('Download is not available')
+  }
+  let token = ''
+  const download = new Promise<AndroidDownload>((resolve, reject) => {
+    const listen = (event: Event) => {
+      const detail = (event as CustomEvent<AndroidDownloadEvent>).detail
+      if (detail.token !== token) {
+        return
+      }
+      if (detail.state === 'progress') {
+        onProgress(detail.loaded, detail.total)
+        return
+      }
+      window.removeEventListener('android-download', listen)
+      if (detail.state === 'ready') {
+        resolve({ url: detail.url, release: () => device.releaseHistoryDownload(token) })
+      } else {
+        reject(new Error(detail.message || 'Download failed'))
+      }
+    }
+    window.addEventListener('android-download', listen)
+    token = device.startHistoryDownload(url)
+    if (!token) {
+      window.removeEventListener('android-download', listen)
+      reject(new Error('Download is not available'))
+    }
+  })
+  return download
 }
