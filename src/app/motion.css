@@ -21,3 +21,9 @@
   --motion-gesture: var(--spring-back);
   --motion-metric: var(--spring-soft);
 }
+
+/* 导航类动效：抽屉/页面推入要快，不能像按压那样慢慢回弹 */
+:root {
+  --motion-drawer:
+    260ms linear(0, 0.3 8%, 0.72 20%, 0.93 32%, 1.015 46%, 1.008 62%, 1.002 80%, 1);
+}

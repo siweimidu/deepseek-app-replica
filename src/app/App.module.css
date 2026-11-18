@@ -24,7 +24,7 @@
   --drawer-edge: min(calc(100% - 68.4px), 380px);
   --drawer-progress: 0;
   /* 弹簧曲线：起手快、收尾轻微过冲再回稳，比 cubic-bezier 更有弹性 */
-  --drawer-transition: var(--motion-reveal);
+  --drawer-transition: var(--motion-drawer);
   touch-action: pan-y;
 }
 
@@ -34,7 +34,7 @@
   inset: 0;
   background: #000;
   opacity: calc(0.28 * var(--drawer-progress));
-  transition: opacity 320ms ease-out;
+  transition: opacity 200ms ease-out;
   pointer-events: none;
 }
 
@@ -58,14 +58,14 @@
   overflow: hidden;
   background: var(--dsw-alias-bg-base);
   transform-origin: left center;
-  transform: translateX(0) scale(1);
+  transform: translateX(0);
   border-radius: 0;
   transition: transform var(--drawer-transition);
   will-change: transform;
 }
 
 [data-android] .frame[data-drawer-open='true'] .main {
-  transform: translateX(var(--drawer-edge)) scale(0.952);
+  transform: translateX(var(--drawer-edge));
   border-radius: 26px;
   box-shadow: -12px 0 40px rgb(0 0 0 / 52%);
 }
@@ -78,7 +78,7 @@
   border-radius: inherit;
   background: var(--dsw-alias-bg-base);
   opacity: calc(0.24 * var(--drawer-progress));
-  transition: opacity 320ms ease-out;
+  transition: opacity 200ms ease-out;
   pointer-events: none;
 }
 
