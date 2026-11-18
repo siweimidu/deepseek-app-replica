@@ -44,34 +44,55 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const [detail, setDetail] = useState<SessionSummary | null>(null)
   const [pinning, setPinning] = useState<{ ids: Set<string>; unpin: boolean } | null>(null)
   const unpin = checked.size > 0 && [...checked].every((id) => pinnedIds.includes(id))
-  // 当前会话放到最前：切换回来时它总在最上面
-  const orderedSessions = useMemo(() => {
+  // 打开侧边栏时把当前会话滚到列表顶部（只改滚动位置，顺序完全不变）
+  useEffect(() => {
     if (!activeId) {
-      return sessions
+      return
     }
-    const index = sessions.findIndex((session) => session.id === activeId)
-    if (index <= 0) {
-      return sessions
-    }
-    const copy = [...sessions]
-    const [current] = copy.splice(index, 1)
-    return [current, ...copy]
-  }, [sessions, activeId])
+    const frame = requestAnimationFrame(() => {
+      const row = document.querySelector<HTMLElement>(
+        `[data-session-id="${CSS.escape(activeId)}"]`
+      )
+      if (!row) {
+        return
+      }
+      // 从行往上找真正的滚动容器（不依赖 ref 挂在哪里）
+      let scroller: HTMLElement | null = row.parentElement
+      while (scroller) {
+        const style = getComputedStyle(scroller)
+        const scrollable =
+          (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+          scroller.scrollHeight > scroller.clientHeight + 4
+        if (scrollable) {
+          break
+        }
+        scroller = scroller.parentElement
+      }
+      if (!scroller) {
+        return
+      }
+      const box = scroller.getBoundingClientRect()
+      const rect = row.getBoundingClientRect()
+      const delta = rect.top - box.top + scroller.scrollTop
+      scroller.scrollTop = Math.max(0, Math.round(delta))
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [activeId, sessions.length])
 
   const groups = useMemo(() => {
     if (!androidDrawer || pinnedIds.length === 0) {
-      return groupSessions(orderedSessions, now, t)
+      return groupSessions(sessions, now, t)
     }
-    const pinned = orderedSessions.filter((session) => pinnedIds.includes(session.id))
+    const pinned = sessions.filter((session) => pinnedIds.includes(session.id))
     const rest = groupSessions(
-      orderedSessions.filter((session) => !pinnedIds.includes(session.id)),
+      sessions.filter((session) => !pinnedIds.includes(session.id)),
       now,
       t
     )
     return pinned.length
       ? [{ key: 'pinned', label: t('androidPinned'), sessions: pinned }, ...rest]
       : rest
-  }, [androidDrawer, orderedSessions, now, pinnedIds, t])
+  }, [androidDrawer, sessions, now, pinnedIds, t])
   const [deleting, setDeleting] = useState<SessionSummary[]>([])
   const [deletePending, setDeletePending] = useState(false)
   const drawerOpen = useMobileSider((state) => state.open)

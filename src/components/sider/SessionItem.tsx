@@ -98,6 +98,7 @@ export const SessionItem = memo(function SessionItem({
   return (
     <div
       className={clsx(styles.item, active && styles.active)}
+      data-session-id={session.id}
       onContextMenu={(event) => {
         if (android) {
           event.preventDefault()
