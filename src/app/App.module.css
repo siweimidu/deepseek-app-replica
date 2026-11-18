@@ -122,3 +122,30 @@
     height: var(--app-viewport-height, 100dvh);
   }
 }
+
+/* 与官方一致：深色下对话区纯黑，抽屉是 #1b1b1c；浅色下两边都白，靠卡片阴影分界 */
+[data-android] .main {
+  background: #ffffff;
+}
+
+/* 深色：对话卡片比抽屉亮一档（取色器实测 #1d1d1d） */
+[data-android] body[data-ds-dark-theme] .main {
+  background: #1d1d1d;
+}
+
+html[data-android]:not([data-ds-dark-theme]) .main {
+  background: #fff;
+}
+
+/* 卡片边缘一圈极细的亮线，深色下也能看清圆角 */
+[data-android] .frame[data-drawer-open='true'] .main {
+  box-shadow:
+    -14px 0 44px rgb(0 0 0 / 58%),
+    inset 1px 0 0 rgb(255 255 255 / 7%);
+}
+
+html[data-android]:not([data-ds-dark-theme]) .frame[data-drawer-open='true'] .main {
+  box-shadow:
+    -12px 0 34px rgb(0 0 0 / 12%),
+    inset 1px 0 0 rgb(0 0 0 / 6%);
+}

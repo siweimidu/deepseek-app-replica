@@ -262,9 +262,9 @@
   width: var(--drawer-edge);
   padding-top: var(--android-status-inset, 0px);
   /* 抽屉底色明显比对话区亮一档，右边界给一条看得见的亮线 */
-  --drawer-surface: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 94%, #ffffff);
+  --drawer-surface: #ffffff;
   background: var(--drawer-surface);
-  border-right: 1px solid rgb(255 255 255 / 18%);
+  border-right: 1px solid rgb(255 255 255 / 8%);
   box-shadow: 10px 0 34px rgb(0 0 0 / 65%);
   /* 纵向滚动留给列表，横向留给「左滑关闭」 */
   touch-action: pan-y;
@@ -497,4 +497,17 @@
 
 [data-android] .mobile .sectionHeader {
   background: var(--drawer-surface, var(--dsw-alias-bg-base));
+}
+
+/* 浅色下抽屉是纯白，边界由对话卡片的阴影给出 */
+/* 深色：抽屉比对话卡片更黑（取色器实测 #0f0f0f） */
+[data-android] body[data-ds-dark-theme] .drawer {
+  --drawer-surface: #0f0f0f;
+  border-right-color: rgb(255 255 255 / 8%);
+  box-shadow: 10px 0 34px rgb(0 0 0 / 65%);
+}
+
+html[data-android]:not([data-ds-dark-theme]) .drawer {
+  border-right-color: rgb(0 0 0 / 5%);
+  box-shadow: none;
 }
