@@ -71,6 +71,66 @@ public final class MainActivity extends Activity {
     private final Map<String, File> downloads = new ConcurrentHashMap<>();
     private final ExecutorService downloadExecutor = Executors.newSingleThreadExecutor();
 
+    @Override
+    public void onCreate(Bundle state) {
+        super.onCreate(state);
+        keys = new ApiKeyStore(this);
+        recentPhotos = new RecentPhotos(getContentResolver());
+        historyExport = new FileExport(getContentResolver());
+        imageSave = new ImageSave(getContentResolver());
+        recorder = new NativeRecorder();
+        frame = new FrameLayout(this);
+        webView = new WebView(this);
+        frame.addView(webView, new FrameLayout.LayoutParams(-1, -1));
+        frame.setOnApplyWindowInsetsListener((view, insets) -> {
+            Insets safe = insets.getInsets(WindowInsets.Type.systemBars()
+                | WindowInsets.Type.displayCutout() | WindowInsets.Type.ime());
+            view.setPadding(safe.left, 0, safe.right, safe.bottom);
+            float top = safe.top / getResources().getDisplayMetrics().density;
+            if (top != statusInset) {
+                statusInset = top;
+                webView.evaluateJavascript("document.documentElement?.style.setProperty("
+                    + "'--android-status-inset', '" + top + "px')", null);
+            }
+            boolean ime = insets.isVisible(WindowInsets.Type.ime());
+            if (ime != keyboardVisible) {
+                keyboardVisible = ime;
+                webView.evaluateJavascript("document.documentElement?.toggleAttribute("
+                    + "'data-keyboard', " + ime + ")", null);
+            }
+            return WindowInsets.CONSUMED;
+        });
+        setContentView(frame);
+        // 真正铺满屏幕：内容画到系统状态栏/导航栏下面，留白由页面按 --android-status-inset 处理
+        getWindow().setDecorFitsSystemWindows(false);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        setBars((getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+            == Configuration.UI_MODE_NIGHT_YES);
+        WebView.setWebContentsDebuggingEnabled(
+            (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0);
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        settings.setTextZoom(100);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        webView.setWebViewClient(new AppPage());
+        webView.setWebChromeClient(new DeviceFeatures());
+        webView.addJavascriptInterface(new DeviceBridge(), "DeepSeekAndroid");
+        registerBackCallback();
+        webView.loadUrl(HOME);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    @SuppressLint("GestureBackNavigation") // API 33+ back gestures use the registered callback.
+    public void onBackPressed() {
+        handleBack();
+    }
+
     private void handleBack() {
         webView.evaluateJavascript("window.dispatchEvent(new Event('android-back', {cancelable: true}))",
             result -> { if ("true".equals(result)) finish(); });
