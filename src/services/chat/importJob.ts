@@ -3,6 +3,7 @@ import { translate } from '../../i18n/index.js'
 import { showToast } from '../../components/base/toastState.js'
 import { BackupError } from './history/errors.js'
 import { importHistory, importHistoryFromUrl } from './backup.js'
+import type { ImportOutcome } from './store.js'
 
 export type ImportPhase = 'idle' | 'downloading' | 'reading' | 'writing' | 'done' | 'error'
 
@@ -59,7 +60,9 @@ const describe = (error: unknown) =>
 export const isImportRunning = () => running
 
 /** 开始导入后立刻返回，进度通过 useImportJob 订阅；页面卸载不会中断任务。 */
-const run = (task: (report: (phase: ImportPhase, value: number) => void) => Promise<void>) => {
+const run = (
+  task: (report: (phase: ImportPhase, value: number) => void) => Promise<ImportOutcome>
+) => {
   if (running) {
     return
   }
@@ -71,9 +74,17 @@ const run = (task: (report: (phase: ImportPhase, value: number) => void) => Prom
     )
   void (async () => {
     try {
-      await task(report)
-      // 完成后直接回到 idle：不显示任何「已导入 N 个对话」提示
+      const outcome = await task(report)
       useImportJob.setState({ ...IDLE })
+      // 只弹一条底部结果提示，几秒后自动消失
+      const ok = outcome.added + outcome.updated
+      const failed = Math.max(0, outcome.sessions - ok)
+      showToast(
+        failed > 0
+          ? { key: 'historyImportDoneMixed', params: { ok, failed } }
+          : { key: 'historyImportDone', params: { ok } },
+        { duration: 4200, place: 'bottom' }
+      )
     } catch (error) {
       const message = describe(error)
       useImportJob.setState({ phase: 'error', failure: message })
@@ -110,6 +121,7 @@ export const startFileImport = (file: File) => {
       sessions: outcome.sessions,
       images: outcome.images,
     })
+    return outcome
   })
 }
 
@@ -143,5 +155,6 @@ export const startLinkImport = (url: string) => {
       sessions: outcome.sessions,
       images: outcome.images,
     })
+    return outcome
   })
 }

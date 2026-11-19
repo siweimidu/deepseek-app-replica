@@ -173,6 +173,8 @@ export const zh = {
   historyImporting: '正在导入历史对话…',
   historyImportedOne: '已导入 1 个对话',
   historyImported: '已导入 {count} 个对话',
+  historyImportDone: '导入完成，成功 {ok} 条',
+  historyImportDoneMixed: '导入完成，成功 {ok} 条，失败 {failed} 条',
   historyPickFile: '选择导出文件（.zip）',
   historyImportFromLink: '从链接导入',
   historyImportLinkHint:

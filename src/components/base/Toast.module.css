@@ -68,3 +68,23 @@
     transform: translateY(-8px);
   }
 }
+
+/* 底部提示（导入完成这类结果） */
+[data-android] .bottom,
+.bottom {
+  top: auto;
+  bottom: calc(32px + env(safe-area-inset-bottom));
+  translate: none;
+  animation: enter-bottom 0.24s var(--ds-ease-in-out);
+}
+
+@keyframes enter-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

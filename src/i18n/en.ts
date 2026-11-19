@@ -180,6 +180,8 @@ export const en = {
     'Import a ZIP exported from DeepSeek. Existing chats get missing titles, times and messages filled in; nothing is duplicated.',
   historyImportedOne: 'Imported 1 chat',
   historyImported: 'Imported {count} chats',
+  historyImportDone: 'Import finished, {ok} succeeded',
+  historyImportDoneMixed: 'Import finished, {ok} succeeded, {failed} failed',
   historyPickFile: 'Choose export file (.zip)',
   historyImportFromLink: 'Import from link',
   historyImportLinkHint:
