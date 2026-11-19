@@ -33,6 +33,9 @@ export const createConfig = ({
   target: `browserslist: ${targets.join(', ')}`,
   entry: './src/main.tsx',
   output: {
+    // worker 里的子 chunk 用 importScripts 加载：
+    // 默认按 ESM import 生成，Worker 以经典方式创建时会直接语法错误
+    workerChunkLoading: 'import-scripts',
     path: path.resolve(root, 'dist'),
     // 运行时按当前脚本地址推导资源路径，file:// 下异步 chunk、字体都按相对位置加载
     publicPath: 'auto',

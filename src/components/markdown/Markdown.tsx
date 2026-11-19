@@ -9,11 +9,10 @@ import './highlight.css'
 
 /**
  * 渲染链路：节流 → 解析 AST → 渲染。
- * 传入 sources 时把正文里的 [citation:N] 渲染为角标。
  *
- * 说明：解析没有放到 worker —— parse.ts 依赖 katex / mermaid / highlight
- * 这些浏览器专用模块，worker 里加载即失败（实测 worker 收到请求从不回包）。
- * 长消息的卡顿由 useThrottleMarkdownRender 控制刷新频率来缓解。
+ * 解析没有放到 worker：一是 parse.ts 依赖 katex / mermaid / highlight 这类浏览器专用模块；
+ * 二是实测 worker（含 importScripts 版本）收不到回包，无法确认可用。
+ * 长消息的刷新频率由 useThrottleMarkdownRender 控制。
  */
 export const Markdown = memo(function Markdown({
   content,
