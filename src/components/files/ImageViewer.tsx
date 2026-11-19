@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { usePredictiveBack } from '../../app/backGesture.js'
+import { addDraftFiles } from '../../services/chat/drafts.js'
+import { useChatStore } from '../../services/chat/store.js'
+import { useSettings } from '../../services/settings.js'
+import { showToast } from '../base/toastState.js'
+import { ImageCropper } from './ImageCropper.js'
 import { closeImageViewer, useImageViewer } from './imageViewerState.js'
 import styles from './ImageViewer.module.css'
 
@@ -30,6 +35,7 @@ export const ImageViewer = () => {
   const { open, src } = useImageViewer()
   const [transform, setTransform] = useState<Transform>(IDENTITY)
   const [dragging, setDragging] = useState(false)
+  const [cropping, setCropping] = useState(false)
   const transformRef = useRef<Transform>(IDENTITY)
   const stageRef = useRef<HTMLDivElement>(null)
   const gesture = useRef({
@@ -215,6 +221,25 @@ export const ImageViewer = () => {
           transition: dragging ? 'none' : 'transform 200ms cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       />
+      <button
+        type="button"
+        className={styles.crop}
+        aria-label="裁剪"
+        onClick={() => setCropping(true)}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+        >
+          <path d="M6 2v10a2 2 0 002 2h10" />
+          <path d="M14 18V8a2 2 0 00-2-2H2" />
+        </svg>
+      </button>
       <button type="button" className={styles.close} aria-label="关闭" onClick={closeImageViewer}>
         <svg
           width="20"
@@ -228,6 +253,25 @@ export const ImageViewer = () => {
           <path d="M5.5 5.5l9 9M14.5 5.5l-9 9" />
         </svg>
       </button>
+      {cropping ? (
+        <ImageCropper
+          src={src}
+          fileName="image"
+          onCancel={() => setCropping(false)}
+          onDone={(file) => {
+            setCropping(false)
+            const sessionId = useChatStore.getState().activeId
+            const apiKey = useSettings.getState().apiKey ?? ''
+            const error = addDraftFiles(sessionId, [file], apiKey)
+            if (error) {
+              showToast(error)
+              return
+            }
+            closeImageViewer()
+            showToast('裁剪完成，已添加到输入框')
+          }}
+        />
+      ) : null}
     </div>,
     document.body
   )

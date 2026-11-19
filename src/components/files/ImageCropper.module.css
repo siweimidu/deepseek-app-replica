@@ -1,0 +1,195 @@
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: #0b0b0c;
+  touch-action: none;
+  animation: stage-in 180ms ease-out;
+}
+
+.canvas {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 8px;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    user-select: none;
+  }
+}
+
+/* 裁剪框外的压暗：用超大内阴影实现，比四块遮罩好维护 */
+.mask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 55%);
+}
+
+.rect {
+  position: absolute;
+  border: 1.5px solid #fff;
+  box-sizing: border-box;
+  cursor: move;
+
+  /* 三分线 */
+  &::before,
+  &::after {
+    position: absolute;
+    content: '';
+    pointer-events: none;
+    background: rgb(255 255 255 / 28%);
+  }
+
+  &::before {
+    inset: 0 33.33% 0 auto;
+    width: 1px;
+    height: 100%;
+    box-shadow: -33vw 0 0 rgb(255 255 255 / 28%);
+  }
+
+  &::after {
+    inset: 33.33% 0 auto 0;
+    height: 1px;
+    width: 100%;
+  }
+}
+
+.nw,
+.ne,
+.sw,
+.se {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  z-index: 2;
+
+  &::after {
+    position: absolute;
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid #fff;
+    border-radius: 2px;
+  }
+}
+
+.nw {
+  top: -14px;
+  left: -14px;
+
+  &::after {
+    top: 12px;
+    left: 12px;
+    border-right: 0;
+    border-bottom: 0;
+  }
+}
+
+.ne {
+  top: -14px;
+  right: -14px;
+
+  &::after {
+    top: 12px;
+    right: 12px;
+    border-left: 0;
+    border-bottom: 0;
+  }
+}
+
+.sw {
+  bottom: -14px;
+  left: -14px;
+
+  &::after {
+    bottom: 12px;
+    left: 12px;
+    border-right: 0;
+    border-top: 0;
+  }
+}
+
+.se {
+  bottom: -14px;
+  right: -14px;
+
+  &::after {
+    bottom: 12px;
+    right: 12px;
+    border-left: 0;
+    border-top: 0;
+  }
+}
+
+.ratios {
+  position: absolute;
+  bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ratio {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 17px;
+  background: rgb(255 255 255 / 12%);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+
+  &[data-active] {
+    background: #fff;
+    color: #101014;
+    font-weight: 600;
+  }
+}
+
+.actions {
+  position: absolute;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  right: 16px;
+  display: flex;
+  gap: 12px;
+
+  button {
+    flex: 1;
+    height: 48px;
+    border: 0;
+    border-radius: 14px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+  }
+}
+
+.cancel {
+  background: rgb(255 255 255 / 12%);
+  color: #fff;
+}
+
+.confirm {
+  background: #4d6bfe;
+  color: #fff;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+@keyframes stage-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
