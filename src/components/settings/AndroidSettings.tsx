@@ -6,6 +6,7 @@ import type { TtsVoice } from '../../services/api/speech.js'
 import { clearHistory, exportHistory } from '../../services/chat/backup.js'
 import { startFileImport, startLinkImport, useImportJob } from '../../services/chat/importJob.js'
 import { normalizeArchiveUrl } from '../../services/chat/history/linkImport.js'
+import { checkAppUpdate, installAppUpdate, installedVersionCode, openInstallPermission, type UpdateInfo, type UpdateProgress } from '../../services/appUpdate.js'
 import { useChatStore } from '../../services/chat/store.js'
 import {
   setApiKey,
@@ -46,7 +47,7 @@ type Page =
   | 'personalization'
   | 'agreements'
   | 'help'
-type Popup = 'locale' | 'theme' | 'voice' | 'logout' | 'delete' | 'link' | 'avatar' | 'name'
+type Popup = 'locale' | 'theme' | 'voice' | 'logout' | 'delete' | 'link' | 'avatar' | 'name' | 'update'
 
 const Profile = () => (
   <svg
@@ -240,6 +241,9 @@ const Settings = ({ start }: { start: Page }) => {
   const avatarInput = useRef<HTMLInputElement>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [nameDraft, setNameDraft] = useState('')
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [updateProgress, setUpdateProgress] = useState<UpdateProgress | null>(null)
+  const [updateBusy, setUpdateBusy] = useState(false)
   const sessions = useChatStore((state) => state.sessions.length)
   const editor = useApiKeyEditor()
   const job = useImportJob()
@@ -428,6 +432,31 @@ const Settings = ({ start }: { start: Page }) => {
                 label={labels.agreements}
                 icon={<IconLinkOutline16 />}
                 onClick={() => setPage('agreements')}
+              />
+            </Group>
+            <Group spaced>
+              <Row
+                label={tr('检查更新', 'Check for updates')}
+                value={`build${installedVersionCode()}`}
+                icon={<IconSettingsOutline16 />}
+                onClick={async () => {
+                  try {
+                    const info = await checkAppUpdate()
+                    if (!info.available) {
+                      showToast(tr('已是最新版本', 'You are up to date'))
+                      return
+                    }
+                    setUpdateInfo(info)
+                    setUpdateProgress(null)
+                    setPopup('update')
+                  } catch (error) {
+                    showToast({
+                      key: 'historyImportFailedDetail',
+                      params: { message: error instanceof Error ? error.message : String(error) },
+                      type: 'error',
+                    })
+                  }
+                }}
               />
             </Group>
             <Group spaced>
@@ -812,6 +841,67 @@ const Settings = ({ start }: { start: Page }) => {
                 onClick={() => void confirmAction()}
               >
                 {t('confirm')}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {popup === 'update' && updateInfo ? (
+        <div className={styles.nameOverlay} role="presentation" onClick={() => setPopup(null)}>
+          <section
+            className={styles.nameCard}
+            role="dialog"
+            aria-modal="true"
+            aria-label={tr('发现新版本', 'Update available')}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className={styles.nameTitle}>
+              {tr('发现新版本', 'Update available')} {updateInfo.tag}
+            </h2>
+            <p className={styles.nameHint}>
+              {tr('当前 build', 'Current build')}
+              {updateInfo.current}
+              {' → build'}
+              {updateInfo.latest}
+              {updateInfo.size > 0 ? ` · ${(updateInfo.size / 1024 / 1024).toFixed(1)} MB` : ''}
+            </p>
+            {updateInfo.notes ? (
+              <p className={styles.updateNotes}>{updateInfo.notes.slice(0, 400)}</p>
+            ) : null}
+            {updateProgress && updateProgress.state !== 'ready' ? (
+              <p className={styles.updateProgress}>
+                {updateProgress.state === 'error'
+                  ? updateProgress.message
+                  : `${tr('正在下载', 'Downloading')} ${Math.max(0, updateProgress.percent)}%`}
+              </p>
+            ) : null}
+            <div className={styles.nameActions}>
+              <button type="button" className={styles.nameCancel} onClick={() => setPopup(null)}>
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                className={styles.nameSave}
+                disabled={updateBusy}
+                onClick={async () => {
+                  setUpdateBusy(true)
+                  setUpdateProgress({ state: 'downloading', percent: 0, loaded: 0, total: updateInfo.size, message: '' })
+                  try {
+                    await installAppUpdate(updateInfo.url, setUpdateProgress)
+                    showToast(tr('已开始安装，按提示完成即可', 'Installer opened'))
+                    setPopup(null)
+                  } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error)
+                    setUpdateProgress({ state: 'error', percent: 0, loaded: 0, total: 0, message })
+                    if (/install|安装|permission|Permission/.test(message)) {
+                      openInstallPermission()
+                    }
+                  } finally {
+                    setUpdateBusy(false)
+                  }
+                }}
+              >
+                {updateBusy ? tr('处理中…', 'Working…') : tr('下载并安装', 'Download and install')}
               </button>
             </div>
           </section>

@@ -21,6 +21,14 @@ type AndroidBridge = {
   versionLabel: () => string
   startHistoryDownload: (url: string) => string
   releaseHistoryDownload: (token: string) => void
+  /** 查 GitHub 最新 Release，返回 JSON 字符串 */
+  checkAppUpdate?: () => string
+  /** 下载并交给系统安装器，进度走 android-update 事件 */
+  installAppUpdate?: (url: string) => void
+  /** "versionCode|versionName" */
+  appVersionInfo?: () => string
+  /** 打开「安装未知应用」授权页 */
+  openInstallPermission?: () => void
 }
 
 export const android = (window as Window & { DeepSeekAndroid?: AndroidBridge }).DeepSeekAndroid

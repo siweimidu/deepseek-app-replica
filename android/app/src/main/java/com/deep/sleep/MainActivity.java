@@ -744,6 +744,91 @@ public final class MainActivity extends Activity {
             }
         }
 
+        /** 查询 GitHub 最新版本，返回 JSON（ok/tag/notes/url/size/current/error） */
+        @JavascriptInterface
+        public String checkAppUpdate() {
+            return AppUpdater.check(MainActivity.this);
+        }
+
+        /** 下载并调用系统安装器；进度通过 android-update 事件回传 */
+        @JavascriptInterface
+        public void installAppUpdate(String address) {
+            if (address == null || address.trim().isEmpty()) {
+                emitUpdate("error", 0, 0, 0, "下载地址为空");
+                return;
+            }
+            emitUpdate("downloading", 0, 0, 0, "");
+            downloadExecutor.execute(() -> {
+                try {
+                    File apk = AppUpdater.download(MainActivity.this, address.trim(),
+                        (percent, loaded, total) -> emitUpdate("progress", percent, loaded, total, ""));
+                    emitUpdate("ready", 100, apk.length(), apk.length(), "");
+                    runOnUiThread(() -> launchInstaller(apk));
+                } catch (Exception error) {
+                    emitUpdate("error", 0, 0, 0, String.valueOf(error.getMessage()));
+                }
+            });
+        }
+
+        /** 当前安装包的 versionCode / versionName，设置页展示用 */
+        @JavascriptInterface
+        public String appVersionInfo() {
+            return AppUpdater.currentVersionCode(MainActivity.this) + "|"
+                + AppUpdater.currentVersionName(MainActivity.this);
+        }
+
+        /** 系统「安装未知应用」开关页；部分机型直接落到应用详情 */
+        @JavascriptInterface
+        public void openInstallPermission() {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception error) {
+                    try {
+                        Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:" + getPackageName()));
+                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(fallback);
+                    } catch (Exception ignored) {
+                        // 无能为力时保持静默，前端会提示手动安装
+                    }
+                }
+            });
+        }
+
+        /** 用系统安装器安装已下载的 APK */
+        private void launchInstaller(File apk) {
+            try {
+                Uri uri = new Uri.Builder()
+                    .scheme("content")
+                    .authority(getPackageName() + ".update")
+                    .appendPath(apk.getName())
+                    .build();
+                grantUriPermission("com.android.packageinstaller", uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                grantUriPermission("com.google.android.packageinstaller", uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(uri, "application/vnd.android.package-archive");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(intent);
+            } catch (Exception error) {
+                emitUpdate("error", 0, 0, 0, "无法启动安装器：" + error.getMessage());
+            }
+        }
+
+        private void emitUpdate(String state, int percent, long loaded, long total, String message) {
+            String script = "window.dispatchEvent(new CustomEvent('android-update',{detail:{"
+                + "state:'" + escapeJs(state) + "',percent:" + percent
+                + ",loaded:" + loaded + ",total:" + total
+                + ",message:'" + escapeJs(message) + "'}}))";
+            runOnUiThread(() -> webView.evaluateJavascript(script, null));
+        }
+
         @JavascriptInterface
         public void releaseHistoryDownload(String token) {
             File file = downloads.remove(token);
