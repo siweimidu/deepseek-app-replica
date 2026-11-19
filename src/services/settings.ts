@@ -26,6 +26,8 @@ type Settings = {
   pinnedSessions: string[]
   /** 用户上传的头像（圆形裁切后的 data URL），为空时显示默认人形图标 */
   avatar: string | null
+  /** 自定义账户名称；null 表示用默认的 API Key */
+  accountName: string | null
 }
 
 const KEYS = {
@@ -42,6 +44,7 @@ const KEYS = {
   foldThinking: 'replica:fold-thinking',
   pinnedSessions: 'replica:pinned-sessions',
   avatar: 'deepsleep:avatar',
+  accountName: 'deepsleep:account-name',
 } as const
 
 const read = (key: string) => {
@@ -136,7 +139,14 @@ export const useSettings = create<Settings>(() => ({
   foldThinking: read(KEYS.foldThinking) !== 'false',
   pinnedSessions: initialPinnedSessions(),
   avatar: read(KEYS.avatar),
+  accountName: read(KEYS.accountName),
 }))
+
+export const setAccountName = (accountName: string | null) => {
+  const value = accountName?.trim() ? accountName.trim().slice(0, 20) : null
+  write(KEYS.accountName, value)
+  useSettings.setState({ accountName: value })
+}
 
 export const setAvatar = (avatar: string | null) => {
   // 头像只在本地保存，超出配额时保留上一次成功保存的图。

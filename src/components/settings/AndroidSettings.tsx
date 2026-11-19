@@ -16,6 +16,7 @@ import {
   setTtsVoice,
   useSettings,
   setAvatar,
+  setAccountName,
   type LocalePreference,
   type ThemePreference,
 } from '../../services/settings.js'
@@ -45,7 +46,7 @@ type Page =
   | 'personalization'
   | 'agreements'
   | 'help'
-type Popup = 'locale' | 'theme' | 'voice' | 'logout' | 'delete' | 'link' | 'avatar'
+type Popup = 'locale' | 'theme' | 'voice' | 'logout' | 'delete' | 'link' | 'avatar' | 'name'
 
 const Profile = () => (
   <svg
@@ -217,8 +218,16 @@ export const AndroidSettings = () => {
 
 const Settings = ({ start }: { start: Page }) => {
   const t = useTranslate()
-  const { locale, localePreference, themePreference, fontSize, foldThinking, ttsVoice, avatar } =
-    useSettings()
+  const {
+    locale,
+    localePreference,
+    themePreference,
+    fontSize,
+    foldThinking,
+    ttsVoice,
+    avatar,
+    accountName,
+  } = useSettings()
   const tr = (chinese: string, english: string) => (locale === 'zh-CN' ? chinese : english)
   const [page, setPage] = useState<Page>(start)
   const [popup, setPopup] = useState<Popup | null>(null)
@@ -229,6 +238,7 @@ const Settings = ({ start }: { start: Page }) => {
   const importInput = useRef<HTMLInputElement>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
   const sessions = useChatStore((state) => state.sessions.length)
   const editor = useApiKeyEditor()
   const job = useImportJob()
@@ -457,6 +467,14 @@ const Settings = ({ start }: { start: Page }) => {
                   if (picked) {
                     setAvatarFile(picked)
                   }
+                }}
+              />
+              <Row
+                label={tr('账户名称', 'Account name')}
+                value={accountName || 'API Key'}
+                onClick={() => {
+                  setNameDraft(accountName ?? '')
+                  setPopup('name')
                 }}
               />
               <Row
@@ -793,6 +811,43 @@ const Settings = ({ start }: { start: Page }) => {
                 onClick={() => void confirmAction()}
               >
                 {t('confirm')}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {popup === 'name' ? (
+        <div className={styles.overlay}>
+          <section className={styles.choice} role="dialog" aria-modal="true">
+            <header>{tr('账户名称', 'Account name')}</header>
+            <p className={styles.message}>
+              {tr(
+                '这个名字只显示在侧边栏底部，不影响你的账号。留空则显示 API Key。',
+                'Shown at the bottom of the sidebar only. Leave empty to show API Key.'
+              )}
+            </p>
+            <label className={styles.linkField}>
+              <span>{tr('名称', 'Name')}</span>
+              <input
+                value={nameDraft}
+                maxLength={20}
+                spellCheck={false}
+                placeholder="API Key"
+                onChange={(event) => setNameDraft(event.target.value)}
+              />
+            </label>
+            <div className={styles.confirmActions}>
+              <button className={styles.confirm} onClick={back}>
+                {t('cancel')}
+              </button>
+              <button
+                className={styles.confirm}
+                onClick={() => {
+                  setAccountName(nameDraft)
+                  setPopup(null)
+                }}
+              >
+                {tr('保存', 'Save')}
               </button>
             </div>
           </section>

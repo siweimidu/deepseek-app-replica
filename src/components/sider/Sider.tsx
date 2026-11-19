@@ -37,6 +37,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const activeId = useChatStore((state) => state.activeId)
   const pinnedIds = useSettings((state) => state.pinnedSessions)
   const avatar = useSettings((state) => state.avatar)
+  const accountName = useSettings((state) => state.accountName)
   const androidDrawer = Boolean(mobile && android)
   const [now, setNow] = useState(Date.now)
   const [selecting, setSelecting] = useState(false)
@@ -323,7 +324,7 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
               )}
             </span>
             <span className={styles.settingsLabel}>
-              {androidDrawer ? 'API Key' : t('settings')}
+              {androidDrawer ? accountName || 'API Key' : t('settings')}
             </span>
             {androidDrawer ? <IconEllipsisOutline16 /> : null}
           </button>
