@@ -817,31 +817,63 @@ const Settings = ({ start }: { start: Page }) => {
         </div>
       ) : null}
       {popup === 'name' ? (
-        <div className={styles.overlay}>
-          <section className={styles.choice} role="dialog" aria-modal="true">
-            <header>{tr('账户名称', 'Account name')}</header>
-            <p className={styles.message}>
+        <div
+          className={styles.nameOverlay}
+          role="presentation"
+          onClick={() => setPopup(null)}
+        >
+          <section
+            className={styles.nameCard}
+            role="dialog"
+            aria-modal="true"
+            aria-label={tr('账户名称', 'Account name')}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 className={styles.nameTitle}>{tr('账户名称', 'Account name')}</h2>
+            <p className={styles.nameHint}>
               {tr(
-                '这个名字只显示在侧边栏底部，不影响你的账号。留空则显示 API Key。',
-                'Shown at the bottom of the sidebar only. Leave empty to show API Key.'
+                '只显示在侧边栏底部，不影响账号本身',
+                'Shown at the bottom of the sidebar only'
               )}
             </p>
-            <label className={styles.linkField}>
-              <span>{tr('名称', 'Name')}</span>
+            <label className={styles.nameField}>
               <input
+                autoFocus
                 value={nameDraft}
                 maxLength={20}
                 spellCheck={false}
+                autoCapitalize="off"
+                autoComplete="off"
+                enterKeyHint="done"
                 placeholder="API Key"
                 onChange={(event) => setNameDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    setAccountName(nameDraft)
+                    setPopup(null)
+                  }
+                }}
               />
             </label>
-            <div className={styles.confirmActions}>
-              <button className={styles.confirm} onClick={back}>
+            {accountName ? (
+              <button
+                type="button"
+                className={styles.nameReset}
+                onClick={() => {
+                  setAccountName(null)
+                  setPopup(null)
+                }}
+              >
+                {tr('恢复默认（API Key）', 'Reset to API Key')}
+              </button>
+            ) : null}
+            <div className={styles.nameActions}>
+              <button type="button" className={styles.nameCancel} onClick={() => setPopup(null)}>
                 {t('cancel')}
               </button>
               <button
-                className={styles.confirm}
+                type="button"
+                className={styles.nameSave}
                 onClick={() => {
                   setAccountName(nameDraft)
                   setPopup(null)
