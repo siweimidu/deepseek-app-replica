@@ -544,3 +544,21 @@
 .recordingCard {
   opacity: 0;
 }
+
+/* 附件区里的「读取文档内容」 */
+.readDocument {
+  align-self: center;
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 15px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+
+  &:active {
+    background: color-mix(in srgb, currentColor 18%, transparent);
+  }
+}

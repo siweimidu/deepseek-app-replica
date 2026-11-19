@@ -2,6 +2,10 @@ import clsx from 'clsx'
 import { memo } from 'react'
 import { useTranslate } from '../../i18n/index.js'
 import { useUploads, type UploadTask } from '../../services/attachments.js'
+import { canExtractText, extractDocumentText } from '../../services/documentText.js'
+import { getDraft, setDraftText } from '../../services/chat/drafts.js'
+import { useChatStore } from '../../services/chat/store.js'
+import { showToast } from '../base/toastState.js'
 import type { DraftAttachment } from '../../services/chat/drafts.js'
 import { IconCloseFill14, IconRefreshOutline16 } from '../base/icons.js'
 import { Tooltip } from '../base/Tooltip.js'
@@ -25,6 +29,8 @@ export const DraftAttachments = memo(function DraftAttachments({
   if (items.length === 0) {
     return null
   }
+  const sessionId = useChatStore((state) => state.activeId)
+  const document = items.find((item) => !item.isImage && canExtractText(item.file.name))
   return (
     <div className={styles.attachments}>
       {items.map((item) => (
@@ -36,6 +42,28 @@ export const DraftAttachments = memo(function DraftAttachments({
           onRemove={() => onRemove(item.id)}
         />
       ))}
+      {document ? (
+        <button
+          type="button"
+          className={styles.readDocument}
+          onClick={async () => {
+            try {
+              const text = await extractDocumentText(document.file)
+              if (!text) {
+                showToast('没能从这份文档里读到文字')
+                return
+              }
+              const draft = getDraft(sessionId)
+              setDraftText(sessionId, `${draft.text}${draft.text ? '\n\n' : ''}${text}`)
+              showToast(`已读取 ${document.file.name} 的正文`)
+            } catch {
+              showToast('读取失败，可能是不支持的文档格式')
+            }
+          }}
+        >
+          读取文档内容
+        </button>
+      ) : null}
     </div>
   )
 })
