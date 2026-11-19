@@ -56,30 +56,54 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
   const lastToggleAt = useRef(0)
 
   useEffect(() => {
-    const frame = frameRef.current
-    if (!frame || !android) {
+    if (!android) {
       return
     }
 
+    /**
+     * 每次都现场取容器。
+     * 首启没填 Key 时 App 只渲染 API Key 页，容器还没出现；
+     * 导入历史后容器也可能被重建 —— 缓存旧元素会让手势彻底失效。
+     */
+    const frameOf = () => {
+      const cached = frameRef.current
+      if (cached && cached.isConnected) {
+        return cached
+      }
+      // ref 还没建立、或旧元素已被替换：直接从 DOM 找当前那个
+      return (
+        (document.querySelector('[data-android-drawer]')?.parentElement as HTMLElement | null) ??
+        null
+      )
+    }
+
     const drawerWidth = () => {
-      const drawer = frame.querySelector<HTMLElement>('[data-android-drawer]')
+      const drawer = frameOf()?.querySelector<HTMLElement>('[data-android-drawer]')
       return drawer?.offsetWidth || window.innerWidth
     }
 
     const claim = () => {
+      const frame = frameOf()
+      if (!frame) {
+        return
+      }
       frame.setAttribute('data-drawer-dragging', '')
       frame.style.setProperty('will-change', 'transform')
     }
 
     const release = () => {
-      frame.removeAttribute('data-drawer-dragging')
+      frameOf()?.removeAttribute('data-drawer-dragging')
     }
 
     const paint = (progress: number) => {
-      frame.style.setProperty('--drawer-progress', String(clamp01(progress)))
+      frameOf()?.style.setProperty('--drawer-progress', String(clamp01(progress)))
     }
 
     const settle = (close: boolean) => {
+      const frame = frameOf()
+      if (!frame) {
+        return
+      }
       release()
       // 动画期间卸掉裁剪/投影，真机上少一大块光栅化成本
       frame.setAttribute('data-drawer-animating', '')
@@ -163,7 +187,7 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
       if (Date.now() - lastToggleAt.current < COOLDOWN_MS) {
         release()
-        frame.style.removeProperty('--drawer-progress')
+        frameOf()?.style.removeProperty('--drawer-progress')
         return
       }
       const dx = x - state.x
@@ -183,7 +207,7 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
         return
       }
       release()
-      frame.style.removeProperty('--drawer-progress')
+      frameOf()?.style.removeProperty('--drawer-progress')
       useSwipeDebug.setState({ last: 'cancel → 还原' })
     }
 
@@ -249,7 +273,8 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
       if (move(event.clientX, event.clientY)) {
         try {
-          if (!frame.hasPointerCapture(event.pointerId)) {
+          const frame = frameOf()
+          if (frame && !frame.hasPointerCapture(event.pointerId)) {
             frame.setPointerCapture(event.pointerId)
           }
         } catch {
@@ -263,28 +288,29 @@ export const useDrawerSwipe = (frameRef: { current: HTMLElement | null }) => {
       }
     }
 
-    frame.addEventListener('touchstart', onTouchStart, { passive: true })
-    frame.addEventListener('touchmove', onTouchMove, { passive: false })
-    frame.addEventListener('touchend', onTouchEnd, { passive: true })
-    frame.addEventListener('touchcancel', restore, { passive: true })
-    frame.addEventListener('pointerdown', onPointerDown, { passive: true })
-    frame.addEventListener('pointermove', onPointerMove, { passive: true })
-    frame.addEventListener('pointerup', onPointerUp, { passive: true })
-    frame.addEventListener('pointercancel', restore, { passive: true })
+    // 挂在 document 上：容器还没渲染或后来被重建都不影响手势
+    document.addEventListener('touchstart', onTouchStart, { passive: true })
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+    document.addEventListener('touchend', onTouchEnd, { passive: true })
+    document.addEventListener('touchcancel', restore, { passive: true })
+    document.addEventListener('pointerdown', onPointerDown, { passive: true })
+    document.addEventListener('pointermove', onPointerMove, { passive: true })
+    document.addEventListener('pointerup', onPointerUp, { passive: true })
+    document.addEventListener('pointercancel', restore, { passive: true })
 
     return () => {
       delete (window as unknown as Record<string, unknown>).__dshSwipe
-      frame.removeEventListener('touchstart', onTouchStart)
-      frame.removeEventListener('touchmove', onTouchMove)
-      frame.removeEventListener('touchend', onTouchEnd)
-      frame.removeEventListener('touchcancel', restore)
-      frame.removeEventListener('pointerdown', onPointerDown)
-      frame.removeEventListener('pointermove', onPointerMove)
-      frame.removeEventListener('pointerup', onPointerUp)
-      frame.removeEventListener('pointercancel', restore)
+      document.removeEventListener('touchstart', onTouchStart)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onTouchEnd)
+      document.removeEventListener('touchcancel', restore)
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('pointermove', onPointerMove)
+      document.removeEventListener('pointerup', onPointerUp)
+      document.removeEventListener('pointercancel', restore)
       release()
-      frame.style.removeProperty('--drawer-progress')
-      frame.style.removeProperty('will-change')
+      frameOf()?.style.removeProperty('--drawer-progress')
+      frameOf()?.style.removeProperty('will-change')
     }
   }, [frameRef])
 
