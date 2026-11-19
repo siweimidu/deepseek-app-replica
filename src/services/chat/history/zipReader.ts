@@ -1,4 +1,4 @@
-import { Inflate } from 'fflate'
+import { inflateInWorker } from './inflateWorker.js'
 import { blobSource, type ByteSource } from './source.js'
 
 // 文件读取与解压的分块：一次读 1 MiB，解压时同样按 1 MiB 喂给 fflate。
@@ -305,19 +305,21 @@ const readEntryBytes = async (
       )
     }
   } else {
-    const inflate = new Inflate(append)
-    for (let offset = 0; offset < entry.compressedSize; offset += INFLATE_CHUNK_BYTES) {
-      const end = Math.min(offset + INFLATE_CHUNK_BYTES, entry.compressedSize)
-      inflate.push(
-        await readBytes(start + offset, end - offset),
-        end === entry.compressedSize
-      )
-      if (entry.compressedSize === 0) {
-        break
+    // 解压放到 worker：大包（几十 MB）不会再卡住主线程的滚动与点击。
+    // 同一份 worker 全程复用，避免按条目反复创建。
+    const compressed: Uint8Array[] = []
+    const totalChunks = Math.max(1, Math.ceil(entry.compressedSize / INFLATE_CHUNK_BYTES))
+    for (let index = 0; index < totalChunks; index += 1) {
+      const offset = index * INFLATE_CHUNK_BYTES
+      const size = Math.min(INFLATE_CHUNK_BYTES, entry.compressedSize - offset)
+      if (size <= 0) {
+        continue
       }
+      compressed.push(await readBytes(start + offset, size))
     }
-    if (entry.compressedSize === 0) {
-      inflate.push(new Uint8Array(), true)
+    const inflated = await inflateInWorker(compressed)
+    if (inflated.length) {
+      append(inflated)
     }
   }
   if (written !== entry.size || crc32(output) !== entry.crc) {

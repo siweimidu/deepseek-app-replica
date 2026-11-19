@@ -3,6 +3,7 @@ import { translate } from '../../i18n/index.js'
 import { showToast } from '../../components/base/toastState.js'
 import { BackupError } from './history/errors.js'
 import { importHistory, importHistoryFromUrl } from './backup.js'
+import { disposeInflateWorker } from './history/inflateWorker.js'
 import type { ImportOutcome } from './store.js'
 
 export type ImportPhase = 'idle' | 'downloading' | 'reading' | 'writing' | 'done' | 'error'
@@ -91,6 +92,7 @@ const run = (
       showToast({ key: 'historyImportFailedDetail', params: { message }, type: 'error' })
     } finally {
       running = false
+      disposeInflateWorker()
     }
   })()
 }
