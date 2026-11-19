@@ -11,6 +11,7 @@ import { Modal } from '../base/Modal.js'
 import { Tooltip } from '../base/Tooltip.js'
 import { showToast } from '../base/toastState.js'
 import { FileCard } from '../files/FileCard.js'
+import { openImageViewer } from '../files/imageViewerState.js'
 import styles from './MessageFile.module.css'
 
 type FileSource = { blob: Blob; url: string }
@@ -128,7 +129,12 @@ export const MessageFile = ({
           <IconPhotoErrorFill20 />
         </span>
       ) : (
-        <img src={url} alt={file.name} onError={() => setFailedUrl(url)} />
+        <img
+          src={url}
+          alt={file.name}
+          onError={() => setFailedUrl(url)}
+          onClick={() => openImageViewer(url, file.name)}
+        />
       )
     ) : null
 

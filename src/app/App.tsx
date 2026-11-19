@@ -11,6 +11,7 @@ import {
   useChatStore,
 } from '../services/chat/store.js'
 import { ImportStatusBar } from '../components/base/ImportStatusBar.js'
+import { ImageViewer } from '../components/files/ImageViewer.js'
 import { VoiceCallScreen } from '../components/call/VoiceCallScreen.js'
 import { SearchPanel } from '../components/search/SearchPanel.js'
 import { SessionSearchPage } from '../components/search/SessionSearchPage.js'
@@ -182,7 +183,8 @@ export const App = () => {
           </div>
         </main>
         <SearchPanel />
-      </div>
+        <ImageViewer />
+</div>
       {android ? <AndroidSettings /> : <SettingsDialog />}
       <SessionSearchPage />
       <VoiceCallScreen />
