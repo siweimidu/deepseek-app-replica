@@ -410,7 +410,8 @@ public final class MainActivity extends Activity {
                 Map<String, String> headers = Map.of("Content-Security-Policy",
                     "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
                     + "img-src 'self' https: data: blob:; font-src 'self' data:; "
-                    + "media-src 'self' blob:; connect-src 'self' https://api.deepseek.com; "
+                    + "media-src 'self' blob:; connect-src 'self' https://api.deepseek.com "
+                    + "https://*.myhuaweicloud.com; worker-src 'self' blob:; "
                     + "frame-src 'none'; base-uri 'none'; form-action 'none';");
                 try {
                     return new WebResourceResponse(type == null ? "application/octet-stream" : type,

@@ -16,9 +16,9 @@ const CHUNK_THRESHOLD = 90
 /**
  * 渲染链路：节流 → 解析 AST → 分帧渲染。
  *
- * 解析没有放 worker（parse.ts 依赖浏览器专用模块，且实测 worker 收不到回包），
- * 长消息改为「先渲染前 60 个块，其余按帧补齐」，
- * 这样一次 React 提交的工作量有上限，滚动和点击不会被一条超长回复顶住。
+ * 解析没有放 worker：worker 产物在本环境里连脚本都不执行（连启动探针都收不到），
+ * 拿不到可靠结论就不上，改成「先渲染前 60 个块、其余按帧补齐」，
+ * 让单次 React 提交的工作量有上限，滚动与点击不会被一条超长回复顶住。
  */
 export const Markdown = memo(function Markdown({
   content,
@@ -45,7 +45,6 @@ export const Markdown = memo(function Markdown({
   const total = ast?.children?.length ?? 0
   const [limit, setLimit] = useState(FIRST_BATCH)
 
-  // 内容变了就回到首批，避免上一轮的限制卡住新内容
   useEffect(() => {
     setLimit(FIRST_BATCH)
   }, [throttledMarkdown])
