@@ -9,6 +9,7 @@ import {
   validateFiles,
   type UploadTask,
 } from '../attachments.js'
+import { compressImage } from '../imageUpload.js'
 import type { FileAttachment } from './types.js'
 
 export type DraftAttachment = {
@@ -84,7 +85,25 @@ export const addDraftFiles = (
     }
   })
   updateDraft(sessionId, (draft) => ({ ...draft, attachments: [...draft.attachments, ...added] }))
-  added.forEach((attachment) => upload(attachment, apiKey))
+  added.forEach((attachment) => {
+    // 图片可能很大：先本地压一次再上传，预览 URL 仍是原图
+    void (async () => {
+      if (attachment.isImage) {
+        const next = await compressImage(attachment.file)
+        if (next !== attachment.file) {
+          updateDraft(sessionId, (draft) => ({
+            ...draft,
+            attachments: draft.attachments.map((item) =>
+              item.id === attachment.id ? { ...item, file: next } : item
+            ),
+          }))
+          upload({ ...attachment, file: next }, apiKey)
+          return
+        }
+      }
+      upload(attachment, apiKey)
+    })()
+  })
   return null
 }
 

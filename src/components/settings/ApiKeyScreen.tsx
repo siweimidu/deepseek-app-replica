@@ -16,7 +16,7 @@ export const ApiKeyScreen = () => {
           void form.submit()
         }}
       >
-        <img className={styles.whale} src={appIcon} alt="" />
+        <img className={styles.appIcon} src={appIcon} alt="" />
         <h1>{t('apiKeyStart')}</h1>
         <input
           aria-label="DeepSeek API Key"
