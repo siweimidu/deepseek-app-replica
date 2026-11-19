@@ -111,8 +111,8 @@ export type AndroidDownload = { url: string; token: string; size: number; releas
  * 交给原生下载：WebView 里的 fetch 受 CORS 限制，DeepSeek 导出链接不带
  * 跨域头，因此由 Java 侧下载到缓存目录，再以 appassets 同源地址交给前端读取。
  */
-/** 原生下载最长等待，超时就报错，避免界面一直没反应 */
-const DOWNLOAD_TIMEOUT_MS = 60_000
+/** 多久没有新进展就算超时（大包可能几十 MB，不能按总时长掐） */
+const DOWNLOAD_IDLE_TIMEOUT_MS = 90_000
 
 export const downloadAndroidHistory = (
   url: string,
@@ -130,6 +130,8 @@ export const downloadAndroidHistory = (
         return
       }
       if (detail.state === 'progress') {
+        // 每来一块进度就重新计时，46MB 这种大包也不会被误判超时
+        armWatchdog()
         onProgress(detail.loaded, detail.total)
         return
       }
@@ -146,10 +148,15 @@ export const downloadAndroidHistory = (
         reject(new Error(detail.message || 'Download failed'))
       }
     }
-    const watchdog = window.setTimeout(() => {
-      window.removeEventListener('android-download', listen)
-      reject(new Error('下载超时，请检查链接是否过期'))
-    }, DOWNLOAD_TIMEOUT_MS)
+    let watchdog = 0
+    const armWatchdog = () => {
+      window.clearTimeout(watchdog)
+      watchdog = window.setTimeout(() => {
+        window.removeEventListener('android-download', listen)
+        reject(new Error('下载超时，请检查链接是否过期'))
+      }, DOWNLOAD_IDLE_TIMEOUT_MS)
+    }
+    armWatchdog()
     window.addEventListener('android-download', listen)
     token = device.startHistoryDownload(url)
     if (!token) {

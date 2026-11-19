@@ -72,7 +72,8 @@ const run = (task: (report: (phase: ImportPhase, value: number) => void) => Prom
   void (async () => {
     try {
       await task(report)
-      useImportJob.setState({ phase: 'done', percent: 1 })
+      // 完成后直接回到 idle：不显示任何「已导入 N 个对话」提示
+      useImportJob.setState({ ...IDLE })
     } catch (error) {
       const message = describe(error)
       useImportJob.setState({ phase: 'error', failure: message })
