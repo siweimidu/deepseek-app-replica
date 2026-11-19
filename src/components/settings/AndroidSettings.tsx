@@ -236,6 +236,7 @@ const Settings = ({ start }: { start: Page }) => {
   const [link, setLink] = useState('')
   const [archive, setArchive] = useState<Awaited<ReturnType<typeof exportHistory>> | null>(null)
   const importInput = useRef<HTMLInputElement>(null)
+  const linkInput = useRef<HTMLTextAreaElement>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [nameDraft, setNameDraft] = useState('')
@@ -893,6 +894,7 @@ const Settings = ({ start }: { start: Page }) => {
             <label className={styles.linkField}>
               <span>{t('historyImportLinkLabel')}</span>
               <textarea
+                ref={linkInput}
                 value={link}
                 rows={3}
                 spellCheck={false}
@@ -909,7 +911,7 @@ const Settings = ({ start }: { start: Page }) => {
               <button
                 className={styles.confirm}
                 onClick={() => {
-                  const value = link.trim()
+                  const value = (linkInput.current?.value ?? link).trim()
                   if (!value) {
                     showToast({ key: 'historyImportLinkEmpty', type: 'error' })
                     return

@@ -221,6 +221,7 @@ public final class MainActivity extends Activity {
             + "token:'" + escapeJs(token) + "',state:'" + state + "',loaded:" + loaded
             + ",total:" + total + ",url:'" + escapeJs(url) + "',message:'" + escapeJs(message)
             + "'}}))";
+        android.util.Log.d("DeepSleep", "download " + token + " " + state + " " + message);
         runOnUiThread(() -> webView.evaluateJavascript(script, null));
     }
 
@@ -648,7 +649,8 @@ public final class MainActivity extends Activity {
             String token = Long.toHexString(System.nanoTime());
             File target = downloadFile(token);
             downloads.put(token, target);
-            startDownload(token, uri.toString());
+            // 用原始字符串下载：签名链接的 query 一旦被重新编码就会 403
+            startDownload(token, address == null ? "" : address.trim());
             return token;
         }
 
