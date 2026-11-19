@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "rspack serve -c rspack.config.ts",
-    "build": "rspack build -c rspack.config.ts",
+    "build": "rspack build -c rspack.config.ts && rspack build -c rspack.worker.config.ts",
     "type": "tsc -p tsconfig.json",
     "lint": "oxlint src rspack.config.ts",
     "format": "oxfmt --write ."
